@@ -20,14 +20,17 @@ private:
     QWidget* createLoginPage();
     QWidget* createRegistrationPage();
     QWidget* createMenuPage(const DataHandler::User& user);
+    QWidget* createConnectionPage();
 
 private slots:
     void switchToLoginPage();
     void switchToRegistrationPage();
     void switchToMenuPage();
     void switchToFormularPage();
+    void switchToConnectionPage();
     void handleLogin(std::string mail, std::string password);
     void handleRegistration();
+    //void handleConnection();
 };
 
 #endif // MAINWINDOW_H

@@ -16,10 +16,12 @@ MainWindow::MainWindow(QWidget* parent)
     // Create pages
     QWidget* loginPage = createLoginPage();
     QWidget* registrationPage = createRegistrationPage();
+    QWidget* connectionPage = createConnectionPage();
 
     // Add pages to the stacked widget
     stackedWidget->addWidget(loginPage);
     stackedWidget->addWidget(registrationPage);
+    stackedWidget->addWidget(connectionPage);
 
     // Set the stacked widget as the central widget
     setCentralWidget(stackedWidget);
@@ -167,6 +169,54 @@ QWidget* MainWindow::createMenuPage(const DataHandler::User& user)
     return menuWidget;
 }
 
+QWidget* MainWindow::createConnectionPage()
+{
+    // Create the main widget for the page
+    QWidget* connectionPage = new QWidget(this);
+
+    // Set up layout
+    QVBoxLayout* layout = new QVBoxLayout(connectionPage);
+
+    // Message label
+    QLabel* messageLabel = new QLabel("Click the button to connect to Automat", connectionPage);
+    messageLabel->setAlignment(Qt::AlignCenter);
+
+    // Connect button
+    QPushButton* connectButton = new QPushButton("Connect", connectionPage);
+    QPushButton* confirmButton = new QPushButton("Confirm", connectionPage);
+    QPushButton* mainMenuButton = new QPushButton("Main Menu", connectionPage);
+    confirmButton->setVisible(false);
+    mainMenuButton->setVisible(false);
+
+    // Update the label when the button is clicked
+    connect(connectButton, &QPushButton::clicked, [=]() {
+        messageLabel->setText("Connected to Automat!\n Insert your package and click on confirm button.");
+        confirmButton->setVisible(true);
+        connectButton->setVisible(false);
+        });
+
+    connect(confirmButton, &QPushButton::clicked, [=]() {
+        messageLabel->setText("Package is to be delivered");
+        confirmButton->setVisible(false);
+        mainMenuButton->setVisible(true);
+        });
+    connect(mainMenuButton, &QPushButton::clicked, [=]() {
+        switchToMenuPage();
+        messageLabel->setText("Click the button to connect to Automat");
+        connectButton->setVisible(true);
+        confirmButton->setVisible(false);
+        mainMenuButton->setVisible(false);
+        });
+
+    // Add widgets to layout
+    layout->addWidget(messageLabel);
+    layout->addWidget(connectButton);
+    layout->addWidget(confirmButton);
+    layout->addWidget(mainMenuButton);
+
+    return connectionPage;
+}
+
 void MainWindow::switchToLoginPage()
 {
     stackedWidget->setCurrentIndex(0); // Switch to login page
@@ -179,12 +229,17 @@ void MainWindow::switchToRegistrationPage()
 
 void MainWindow::switchToMenuPage()
 {
-    stackedWidget->setCurrentIndex(2); // Switch to registration page
+    stackedWidget->setCurrentIndex(3); // Switch to registration page
 }
 
 void MainWindow::switchToFormularPage()
 {
-    stackedWidget->setCurrentIndex(3); // Switch to registration page
+    stackedWidget->setCurrentIndex(4); // Switch to registration page
+}
+
+void MainWindow::switchToConnectionPage()
+{
+    stackedWidget->setCurrentIndex(2); // Switch to registration page
 }
 
 void MainWindow::handleLogin(std::string mail, std::string password) {

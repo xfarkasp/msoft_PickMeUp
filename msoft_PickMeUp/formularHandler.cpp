@@ -76,7 +76,7 @@ QWidget* FormularHandler::createSendParcelForm(QWidget* parent) {
                                                 destinationInput->text().toStdString());
         QStackedWidget* stackedWidget = parent->findChild<QStackedWidget*>();
         if (!stackedWidget) return;
-        stackedWidget->setCurrentIndex(1);
+        stackedWidget->setCurrentIndex(2);
         });
 
     return form;
