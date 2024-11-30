@@ -1,6 +1,7 @@
 #include "FormularHandler.h"
 #include "DataHandler.h"
 #include <QStackedWidget>
+#include "ConnectionHandler.h"
 
 // Constructor
 FormularHandler::FormularHandler() {}
@@ -70,15 +71,25 @@ QWidget* FormularHandler::createSendParcelForm(QWidget* parent) {
             QMessageBox::warning(parent, "Validation Error", "Destination Address is required.");
             return;
         }
-        DataHandler::getInstance().writteParcel(senderInput->text().toStdString(),
+        // write created parcel to database
+        int32_t id = DataHandler::getInstance().writteParcel(senderInput->text().toStdString(),
                                                 recipientInput->text().toStdString(),
                                                 sourceInput->text().toStdString(),
                                                 destinationInput->text().toStdString());
+
         QStackedWidget* stackedWidget = parent->findChild<QStackedWidget*>();
-        if (!stackedWidget) return;
-        stackedWidget->setCurrentIndex(2);
+        if (!stackedWidget)
+        {
+            return;
+        }
+
+        ConnectionHandler connection;
+
+        QWidget* connectionPage = connection.connectionGui(id, parent);
+        connectionPage->setObjectName("ReceiveParcelPage");
+        stackedWidget->addWidget(connectionPage);
+        stackedWidget->setCurrentWidget(connectionPage);
         });
 
     return form;
 }
-

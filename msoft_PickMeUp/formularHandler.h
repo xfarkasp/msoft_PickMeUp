@@ -7,7 +7,6 @@
 #include <QMessageBox>
 #include <QString>
 
-// Enum for different form types
 enum class FormType {
     SendParcel,
     ReceiveParcel,
@@ -18,10 +17,8 @@ enum class FormType {
 class FormularHandler : public QObject
 {
 public:
-    // Constructor
     FormularHandler();
 
-    // Factory method to get the desired form
     QWidget* getForm(FormType type, QWidget* parent = nullptr);
 
 private:

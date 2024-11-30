@@ -101,7 +101,10 @@
     <QtUic Include="msoft_PickMeUp.ui" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="AutomatController.cpp" />
+    <ClCompile Include="ConnectionHandler.cpp" />
     <ClCompile Include="formularHandler.cpp" />
+    <ClCompile Include="Locker.h" />
     <ClCompile Include="main.cpp" />
     <ClCompile Include="mainwindow.cpp" />
     <ClCompile Include="DataHandler.h" />
@@ -110,6 +113,8 @@
     <QtMoc Include="mainwindow.h" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="AutomatController.h" />
+    <ClInclude Include="ConnectionHandler.h" />
     <ClInclude Include="formularHandler.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

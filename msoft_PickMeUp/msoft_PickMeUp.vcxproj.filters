@@ -43,6 +43,15 @@
     <ClCompile Include="formularHandler.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="Locker.h">
+      <Filter>Header Files</Filter>
+    </ClCompile>
+    <ClCompile Include="AutomatController.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="ConnectionHandler.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <QtMoc Include="mainwindow.h">
@@ -51,6 +60,12 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="formularHandler.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="ConnectionHandler.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="AutomatController.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
