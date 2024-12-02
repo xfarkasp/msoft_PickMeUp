@@ -19,7 +19,7 @@ public:
     bool recordPackage(int32_t id);
     void openLocker(){}
     bool isInserted() { return true; }
-    DataHandler::Parcel getPackgageData(int32_t id) { return DataHandler::getInstance().getParcel(id); }
+    DataHandler::Parcel& getPackgageData(int32_t id) { return DataHandler::getInstance().getParcel(id); }
 
 private:
     std::vector<Locker> m_lockers;

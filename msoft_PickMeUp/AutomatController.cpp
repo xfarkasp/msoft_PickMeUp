@@ -3,7 +3,7 @@
 
 bool AutomatController::recordPackage(int32_t id)
 {
-    DataHandler::Parcel package = getPackgageData(id);
+    DataHandler::Parcel& package = getPackgageData(id);
     DataHandler::ParcelSize size = package.getSize();
 
     if (!checkSpace(size))

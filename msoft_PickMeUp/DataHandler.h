@@ -4,6 +4,7 @@
 #include <vector>
 #include <map>
 #include <stdexcept>
+#include <QString>
 
 class DataHandler
 {
@@ -36,8 +37,42 @@ enum class ParcelSize
 
 enum class TaskStatus
 {
-	Created
+	Created,
+	Assigned
 };
+
+enum class TaskType
+{
+	Delivery,
+	Repair,
+	Pain
+};
+
+static QString taskStatusToString(TaskStatus status)
+{
+	switch (status) {
+	case TaskStatus::Created:
+		return "Created";
+	case TaskStatus::Assigned:
+		return "Assigned";
+	default:
+		return "Unknown";
+	}
+}
+
+static QString taskTypeToString(TaskType type)
+{
+	switch (type) {
+	case TaskType::Delivery:
+		return "Delivery";
+	case TaskType::Repair:
+		return "Repair";
+	case TaskType::Pain:
+		return "Pain";
+	default:
+		return "Unknown";
+	}
+}
 
 struct User
 {
@@ -60,11 +95,16 @@ struct Parcel
 
 	Parcel(const Parcel& other) = default;
 	Parcel& operator=(const Parcel& other) = default;
-
 	Parcel(Parcel&& other) noexcept = default;
 	Parcel& operator=(Parcel&& other) noexcept = default;
 	ParcelSize getSize() { return m_size; }
-	void setState(ParcelStatus status) { m_status = status; }
+	void setState(ParcelStatus status) {
+		m_status = status; 
+		if (status == ParcelStatus::Sent)
+		{
+			DataHandler::getInstance().writteTask(m_parcelId, std::string{}, m_sender, m_sourceAddress, TaskType::Delivery);
+		}
+	}
 	uint32_t m_parcelId;
 	std::string m_sender;
 	std::string m_reciever;
@@ -72,6 +112,21 @@ struct Parcel
 	std::string m_destinationAddress;
 	ParcelStatus m_status;
 	ParcelSize m_size;
+};
+
+struct Task
+{
+	Task(int32_t id, int32_t objectId, std::string asignee, std::string creator, std::string location, TaskType taskType)
+		:m_id(m_id), m_objectId(objectId), m_asignee(asignee), m_creator(creator), m_location(location), m_taskType(taskType), m_taskStatus(TaskStatus::Created)
+	{}
+
+	int32_t m_id;
+	int32_t m_objectId;
+	std::string m_asignee;
+	std::string m_creator;
+	std::string m_location;
+	TaskType m_taskType;
+	TaskStatus m_taskStatus;
 };
 
 public:
@@ -101,6 +156,14 @@ public:
 		return assignedId;
 	}
 
+	int32_t writteTask(int32_t objectId, std::string asignee, std::string creator, std::string location, TaskType taskType)
+	{
+		int32_t assignedId = m_currentTaskId;
+		m_tasks.emplace(assignedId, Task{ m_currentTaskId , objectId, asignee, creator,  location, taskType });
+		m_currentTaskId++;
+		return assignedId;
+	}
+
 	Parcel& getParcel(int32_t parcelId)
 	{
 		auto it = m_parcels.find(parcelId);
@@ -110,20 +173,22 @@ public:
 		throw std::runtime_error("Parcel does not exist");
 	}
 
+	std::map<int32_t, Task> getTasks() { return m_tasks; }
+
 private:
 	DataHandler()
-		:m_users(std::map<std::string, User>{}), m_currentUserId(0), m_currentParcelId(0)
+		:m_users(std::map<std::string, User>{}), m_currentUserId(0), m_currentParcelId(0), m_currentTaskId(0)
 	{
 		m_users.emplace("a", User{ 0, "Mr.Test", "a", "a", UserType::Basic });
-		m_users.emplace("legit@mail.com", User{ 0, "Mr.Test", "strongpassword", "legit@mail.com", UserType::Basic });
-		m_users.emplace("courier@mail.com", User{ 1, "Mr.Courier", "strongpassword", "courier@mail.com", UserType::FreelanceCourier });
+		m_users.emplace("b", User{ 1, "Mr.Courier", "b", "courier@mail.com", UserType::FreelanceCourier });
 		m_users.emplace("tech@mail.com", User{ 2, "Mr.Tech", "strongpassword", "tech@mail.com", UserType::Technician });
 	}
 
 private:
 	int32_t m_currentUserId;
 	int32_t m_currentParcelId;
+	int32_t m_currentTaskId;
 	std::map<std::string, User> m_users;
 	std::map<int32_t, Parcel> m_parcels;
-	//std::map<std::string, Task> m_parcels;
+	std::map<int32_t, Task> m_tasks;
 };

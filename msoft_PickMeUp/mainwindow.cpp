@@ -1,5 +1,4 @@
 #include "mainwindow.h"
-#include "mainwindow.h"
 #include <QStackedWidget>
 #include <QWidget>
 #include <QVBoxLayout>
@@ -8,11 +7,12 @@
 #include <QLabel>
 #include <QMessageBox>
 #include "formularHandler.h"
+#include <QScrollArea>
+#include "ConnectionHandler.h"
 
 MainWindow::MainWindow(QWidget* parent)
     : QMainWindow(parent), stackedWidget(new QStackedWidget(this))
 {
-
     QWidget* loginPage = createLoginPage();
     QWidget* registrationPage = createRegistrationPage();
 
@@ -53,8 +53,8 @@ QWidget* MainWindow::createLoginPage()
     // Connect signals
     connect(loginButton, &QPushButton::clicked, this, [this, usernameInput, passwordInput]
         {
-            QString username = usernameInput->text();  // Fetch username from QLineEdit
-            QString password = passwordInput->text();  // Fetch password from QLineEdit
+            QString username = usernameInput->text();
+            QString password = passwordInput->text();
             handleLogin(username.toStdString(), password.toStdString());
         });
     connect(toRegisterButton, &QPushButton::clicked, this, &MainWindow::switchToRegistrationPage);
@@ -108,44 +108,42 @@ QWidget* MainWindow::createMenuPage(const DataHandler::User& user)
 
     if (user.m_userType == DataHandler::UserType::Basic)
     {
+        menuWidget->setObjectName("BasicMenu");
         QPushButton* sendParcelButton = new QPushButton("Send Parcel", menuWidget);
         QPushButton* receiveParcelButton = new QPushButton("PickUp Parcel", menuWidget);
         QPushButton* orderHistoryButton = new QPushButton("Order History", menuWidget);
-        QPushButton* userSettingsButton = new QPushButton("User Settings", menuWidget);
+        QPushButton* logOutButton = new QPushButton("Log out", menuWidget);
 
-        // Set tile styles (optional)
-        QList<QPushButton*> buttons = { sendParcelButton, receiveParcelButton, orderHistoryButton, userSettingsButton };
+        QList<QPushButton*> buttons = { sendParcelButton, receiveParcelButton, orderHistoryButton, logOutButton };
         for (QPushButton* button : buttons) {
-            button->setFixedSize(150, 150); // Set size
-            button->setStyleSheet("font-size: 16px; color: black; background-color: #f0f0f0; border-radius: 10px;"); // Style
+            button->setFixedSize(150, 150);
+            button->setStyleSheet("font-size: 16px; color: black; background-color: #f0f0f0; border-radius: 10px;");
         }
 
-        // Add tiles to the grid layout
         gridLayout->addWidget(sendParcelButton, 0, 0);
         gridLayout->addWidget(receiveParcelButton, 0, 1);
         gridLayout->addWidget(orderHistoryButton, 1, 0);
-        gridLayout->addWidget(userSettingsButton, 1, 1);
+        gridLayout->addWidget(logOutButton, 1, 1);
 
         connect(sendParcelButton, &QPushButton::clicked, this, [this]
             {
                 FormularHandler formUi;
-                for (int i = 0; i < stackedWidget->count(); ++i) {
-                    if (stackedWidget->widget(i)->objectName() == "ReceiveParcelPage") {
-                        stackedWidget->setCurrentIndex(i);
-                        return;
-                    }
-                }
-
                 QWidget* receiveParcelPage = formUi.getForm(FormType::SendParcel, this);
                 receiveParcelPage->setObjectName("ReceiveParcelPage");
                 stackedWidget->addWidget(receiveParcelPage);
                 stackedWidget->setCurrentWidget(receiveParcelPage);
             });
 
+        connect(logOutButton, &QPushButton::clicked, this, [this]
+            {
+                switchToLoginPage();
+            });
+
     }
 
     if (user.m_userType == DataHandler::UserType::FreelanceCourier)
     {
+        menuWidget->setObjectName("FreelanceCourierMenu");
         QPushButton* taskListButton = new QPushButton("Task List", menuWidget);
         QPushButton* userSettingsButton = new QPushButton("User Settings", menuWidget);
 
@@ -156,10 +154,12 @@ QWidget* MainWindow::createMenuPage(const DataHandler::User& user)
             button->setStyleSheet("font-size: 16px; color: black; background-color: #f0f0f0; border-radius: 10px;"); // Style
         }
 
-        /*connect(taskList, &QPushButton::clicked, this, [this]
+        connect(taskListButton, &QPushButton::clicked, this, [this]
             {
-
-            })*/
+                QWidget* taskPage = createTaskList();
+                stackedWidget->addWidget(taskPage);
+                stackedWidget->setCurrentWidget(taskPage);
+            });
 
         // Add tiles to the grid layout
         gridLayout->addWidget(taskListButton, 0, 0);
@@ -167,6 +167,56 @@ QWidget* MainWindow::createMenuPage(const DataHandler::User& user)
     }
 
     return menuWidget;
+}
+
+QWidget* MainWindow::createTaskList()
+{
+    DataHandler& dataHandler = DataHandler::getInstance();
+    QWidget* containerWidget = new QWidget();
+    QVBoxLayout* mainLayout = new QVBoxLayout(containerWidget);
+
+    for (auto& taskPair : dataHandler.getTasks())
+    {
+
+        QVBoxLayout* layout = new QVBoxLayout(this);
+        const auto& task = taskPair.second;
+        // Create labels for task information
+        QLabel* assigneeLabel = new QLabel("Assignee: " + QString::fromStdString(task.m_asignee), this);
+        QLabel* creatorLabel = new QLabel("Creator: " + QString::fromStdString(task.m_creator), this);
+        QLabel* locationLabel = new QLabel("Location: " + QString::fromStdString(task.m_location), this);
+        QLabel* typeLabel = new QLabel("Type: " +  DataHandler::taskTypeToString(task.m_taskType));
+        QLabel* statusLabel = new QLabel("State: " +  DataHandler::taskStatusToString(task.m_taskStatus));
+
+        layout->addWidget(assigneeLabel);
+        layout->addWidget(creatorLabel);
+        layout->addWidget(locationLabel);
+        layout->addWidget(typeLabel);
+        layout->addWidget(statusLabel);
+
+        mainLayout->addLayout(layout);
+
+        QPushButton* actionButton = new QPushButton("Execute");
+        layout->addWidget(actionButton);
+        QObject::connect(actionButton, &QPushButton::clicked, this, [=]() {
+            QString message = QString("Navigation system is navigating you.");
+               
+            QMessageBox::information(nullptr, "Task Details", message);
+            ConnectionHandler connection;
+
+            QWidget* connectionPage = connection.connectionGui(task.m_objectId, this);
+            connectionPage->setObjectName("ReceiveParcelPage");
+            stackedWidget->addWidget(connectionPage);
+            stackedWidget->setCurrentWidget(connectionPage);
+            });
+    }
+
+    containerWidget->setLayout(mainLayout);
+
+    QScrollArea* scrollArea = new QScrollArea();
+    scrollArea->setWidget(containerWidget);
+    scrollArea->setWidgetResizable(false);
+
+    return scrollArea;
 }
 
 void MainWindow::switchToLoginPage()
@@ -179,11 +229,6 @@ void MainWindow::switchToRegistrationPage()
     stackedWidget->setCurrentIndex(1);
 }
 
-void MainWindow::switchToMenuPage()
-{
-    stackedWidget->setCurrentIndex(2);
-}
-
 void MainWindow::handleLogin(std::string mail, std::string password) {
     DataHandler& userHandler = userHandler.getInstance();
     try
@@ -191,9 +236,7 @@ void MainWindow::handleLogin(std::string mail, std::string password) {
         DataHandler::User user = userHandler.getUser(mail, password);
         QWidget* menuPage = createMenuPage(user);
         stackedWidget->addWidget(menuPage);
-
-        switchToMenuPage();
-
+        stackedWidget->setCurrentWidget(menuPage);
     }
     catch (std::runtime_error& e)
     {

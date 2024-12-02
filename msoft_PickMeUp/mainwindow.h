@@ -12,6 +12,7 @@ class MainWindow : public QMainWindow {
 
 public:
     MainWindow(QWidget* parent = nullptr);
+    static int findWidget(std::string widgetName, QWidget* parent);
     ~MainWindow();
 
 private:
@@ -20,11 +21,11 @@ private:
     QWidget* createLoginPage();
     QWidget* createRegistrationPage();
     QWidget* createMenuPage(const DataHandler::User& user);
+    QWidget* createTaskList();
 
 private slots:
     void switchToLoginPage();
     void switchToRegistrationPage();
-    void switchToMenuPage();
     void handleLogin(std::string mail, std::string password);
     void handleRegistration();
 };
