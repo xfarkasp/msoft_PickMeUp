@@ -22,6 +22,7 @@ private:
     QWidget* createRegistrationPage();
     QWidget* createMenuPage(const DataHandler::User& user);
     QWidget* createTaskList();
+    QWidget* createReportList();
 
 private slots:
     void switchToLoginPage();

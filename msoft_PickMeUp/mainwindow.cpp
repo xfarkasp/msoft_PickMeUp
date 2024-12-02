@@ -6,8 +6,9 @@
 #include <QPushButton>
 #include <QLabel>
 #include <QMessageBox>
-#include "formularHandler.h"
+#include <QDateTime>
 #include <QScrollArea>
+#include "formularHandler.h"
 #include "ConnectionHandler.h"
 
 MainWindow::MainWindow(QWidget* parent)
@@ -145,10 +146,10 @@ QWidget* MainWindow::createMenuPage(const DataHandler::User& user)
     {
         menuWidget->setObjectName("FreelanceCourierMenu");
         QPushButton* taskListButton = new QPushButton("Task List", menuWidget);
-        QPushButton* userSettingsButton = new QPushButton("User Settings", menuWidget);
+        QPushButton* logOutButton = new QPushButton("Log out", menuWidget);
 
         // Set tile styles (optional)
-        QList<QPushButton*> buttons = { taskListButton, userSettingsButton };
+        QList<QPushButton*> buttons = { taskListButton, logOutButton };
         for (QPushButton* button : buttons) {
             button->setFixedSize(150, 150); // Set size
             button->setStyleSheet("font-size: 16px; color: black; background-color: #f0f0f0; border-radius: 10px;"); // Style
@@ -161,9 +162,45 @@ QWidget* MainWindow::createMenuPage(const DataHandler::User& user)
                 stackedWidget->setCurrentWidget(taskPage);
             });
 
+        connect(logOutButton, &QPushButton::clicked, this, [this]
+            {
+                switchToLoginPage();
+            });
+
         // Add tiles to the grid layout
         gridLayout->addWidget(taskListButton, 0, 0);
-        gridLayout->addWidget(userSettingsButton, 0, 1);
+        gridLayout->addWidget(logOutButton, 0, 1);
+    }
+
+    if (user.m_userType == DataHandler::UserType::Operator)
+    {
+        menuWidget->setObjectName("OperatorMenu");
+        QPushButton* reportListButton = new QPushButton("Report List", menuWidget);
+        QPushButton* logOutButton = new QPushButton("Logout", menuWidget);
+
+        // Set tile styles (optional)
+        QList<QPushButton*> buttons = { reportListButton, logOutButton };
+        for (QPushButton* button : buttons) {
+            button->setFixedSize(150, 150); // Set size
+            button->setStyleSheet("font-size: 16px; color: black; background-color: #f0f0f0; border-radius: 10px;"); // Style
+        }
+
+        connect(reportListButton, &QPushButton::clicked, this, [this]
+            {
+                QWidget* reportPage = createReportList();
+                stackedWidget->addWidget(reportPage);
+                stackedWidget->setCurrentWidget(reportPage);
+
+            });
+
+        connect(logOutButton, &QPushButton::clicked, this, [this]
+            {
+                switchToLoginPage();
+            });
+
+        // Add tiles to the grid layout
+        gridLayout->addWidget(reportListButton, 0, 0);
+        gridLayout->addWidget(logOutButton, 0, 1);
     }
 
     return menuWidget;
@@ -207,6 +244,52 @@ QWidget* MainWindow::createTaskList()
             connectionPage->setObjectName("ReceiveParcelPage");
             stackedWidget->addWidget(connectionPage);
             stackedWidget->setCurrentWidget(connectionPage);
+            });
+    }
+
+    containerWidget->setLayout(mainLayout);
+
+    QScrollArea* scrollArea = new QScrollArea();
+    scrollArea->setWidget(containerWidget);
+    scrollArea->setWidgetResizable(false);
+
+    return scrollArea;
+}
+
+QWidget* MainWindow::createReportList()
+{
+    DataHandler& dataHandler = DataHandler::getInstance();
+    QWidget* containerWidget = new QWidget();
+    QVBoxLayout* mainLayout = new QVBoxLayout(containerWidget);
+
+    for (auto& reportPair : dataHandler.getReports())
+    {
+
+        QVBoxLayout* layout = new QVBoxLayout(this);
+        const auto& report = reportPair.second;
+
+        time_t time = report.m_reportDate;
+        QDateTime dateTime = QDateTime::fromSecsSinceEpoch(static_cast<qint64>(time));
+        QString formattedDate = dateTime.toString("yyyy-MM-dd hh:mm:ss");
+
+        QLabel* locationLabel = new QLabel("Location: " + QString::fromStdString(report.m_location), this);
+        QLabel* reportDateLabel = new QLabel("Time of report: " + QString("Timestamp: ") + formattedDate, this);
+        QLabel* statusLabel = new QLabel("Location: " + DataHandler::reportStatusToString(report.m_status), this);
+
+        layout->addWidget(locationLabel);
+        layout->addWidget(reportDateLabel);
+        layout->addWidget(statusLabel);
+
+        mainLayout->addLayout(layout);
+
+        QPushButton* actionButton = new QPushButton("Request repair");
+        layout->addWidget(actionButton);
+        QObject::connect(actionButton, &QPushButton::clicked, this, [=]() {
+            FormularHandler formUi;
+            QWidget* receiveParcelPage = formUi.getForm(FormType::RequestRepair, this);
+            receiveParcelPage->setObjectName("ReceiveParcelPage");
+            stackedWidget->addWidget(receiveParcelPage);
+            stackedWidget->setCurrentWidget(receiveParcelPage);
             });
     }
 

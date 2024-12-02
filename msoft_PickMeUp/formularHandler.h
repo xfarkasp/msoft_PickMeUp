@@ -9,9 +9,7 @@
 
 enum class FormType {
     SendParcel,
-    ReceiveParcel,
-    OrderHistory,
-    UserSettings
+    RequestRepair
 };
 
 class FormularHandler : public QObject

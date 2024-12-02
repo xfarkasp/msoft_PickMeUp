@@ -3,7 +3,7 @@
 #include "DataHandler.h"
 #include <QStackedWidget>
 
-int findWidget(std::string widgetName, QWidget* parent)
+int32_t ConnectionHandler::findWidget(std::string widgetName, QWidget* parent)
 {
     int targetIndex = -1;
     QList<QWidget*> widgets = parent->findChildren<QWidget*>();

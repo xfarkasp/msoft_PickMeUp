@@ -16,7 +16,8 @@ enum class UserType
 	Basic,
 	FreelanceCourier,
 	CompanyCourier,
-	Technician
+	Technician,
+	Operator
 };
 
 enum class ParcelStatus
@@ -48,6 +49,13 @@ enum class TaskType
 	Pain
 };
 
+enum class ReportStatus
+{
+	Malfunction,
+	Working,
+	NoReport
+};
+
 static QString taskStatusToString(TaskStatus status)
 {
 	switch (status) {
@@ -69,6 +77,20 @@ static QString taskTypeToString(TaskType type)
 		return "Repair";
 	case TaskType::Pain:
 		return "Pain";
+	default:
+		return "Unknown";
+	}
+}
+
+static QString reportStatusToString(ReportStatus status)
+{
+	switch (status) {
+	case ReportStatus::Malfunction:
+		return "Malfunction";
+	case ReportStatus::Working:
+		return "Working";
+	case ReportStatus::NoReport:
+		return "No report";
 	default:
 		return "Unknown";
 	}
@@ -129,6 +151,31 @@ struct Task
 	TaskStatus m_taskStatus;
 };
 
+struct Report
+{
+	Report(int32_t id, std::string location, time_t reportDate, ReportStatus status)
+		:m_id(m_id), m_location(location), m_reportDate(reportDate), m_status(status)
+	{}
+
+	int32_t m_id;
+	std::string m_location;
+	time_t m_reportDate;
+	ReportStatus m_status;
+};
+
+struct RepairRequest
+{
+	RepairRequest(int32_t id, std::string reporterName, std::string severity, std::string description, std::string location)
+		:m_id(m_id), m_location(location), m_reporterName(reporterName), m_severity(severity), m_description(description)
+	{}
+
+	int32_t m_id;
+	std::string m_reporterName;
+	std::string m_severity; 
+	std::string m_description;
+	std::string m_location;
+};
+
 public:
 	DataHandler(const DataHandler&) = delete;
 	DataHandler& operator=(const DataHandler&) = delete;
@@ -164,6 +211,14 @@ public:
 		return assignedId;
 	}
 
+	int32_t writteRepair(std::string reporterName, std::string severity, std::string description, std::string location)
+	{
+		int32_t assignedId = m_currentTaskId;
+		m_repairRequest.emplace(assignedId, RepairRequest{ m_currentRepairId , reporterName, severity, description,  location });
+		m_currentRepairId++;
+		return assignedId;
+	}
+
 	Parcel& getParcel(int32_t parcelId)
 	{
 		auto it = m_parcels.find(parcelId);
@@ -174,21 +229,30 @@ public:
 	}
 
 	std::map<int32_t, Task> getTasks() { return m_tasks; }
+	std::map<int32_t, Report> getReports() { return m_reports; }
 
 private:
 	DataHandler()
-		:m_users(std::map<std::string, User>{}), m_currentUserId(0), m_currentParcelId(0), m_currentTaskId(0)
+		:m_currentUserId(0), m_currentParcelId(0), m_currentTaskId(0), m_currentReportId(0), m_currentRepairId(0)
 	{
 		m_users.emplace("a", User{ 0, "Mr.Test", "a", "a", UserType::Basic });
 		m_users.emplace("b", User{ 1, "Mr.Courier", "b", "courier@mail.com", UserType::FreelanceCourier });
-		m_users.emplace("tech@mail.com", User{ 2, "Mr.Tech", "strongpassword", "tech@mail.com", UserType::Technician });
+		m_users.emplace("c", User{ 2, "Mr.Tech", "c", "operator@mail.com", UserType::Operator });
+		m_users.emplace("d", User{ 3, "Mr.Tech", "d", "operator@mail.com", UserType::Technician });
+
+		m_reports.emplace(0, Report{ 0, "Location 0", 0, ReportStatus::Malfunction });
 	}
 
 private:
 	int32_t m_currentUserId;
 	int32_t m_currentParcelId;
 	int32_t m_currentTaskId;
+	int32_t m_currentReportId;
+	int32_t m_currentRepairId;
 	std::map<std::string, User> m_users;
 	std::map<int32_t, Parcel> m_parcels;
 	std::map<int32_t, Task> m_tasks;
+	std::map<int32_t, Report> m_reports;
+	std::map<int32_t, RepairRequest> m_repairRequest;
+
 };

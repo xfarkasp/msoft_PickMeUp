@@ -11,9 +11,9 @@
 class ConnectionHandler : public QObject
 {
 public:
-    // Constructor
     ConnectionHandler() {};
     AutomatController connectAutomat() { return AutomatController{}; }
     std::string getMessage() { return "message from automat"; }
     QWidget* connectionGui(int32_t id, QWidget* parent = nullptr);  
+    static int findWidget(std::string widgetName, QWidget* parent);
 };
