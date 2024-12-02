@@ -15,7 +15,7 @@ enum class FormType {
 class FormularHandler : public QObject
 {
 public:
-    FormularHandler();
+    FormularHandler(){}
 
     QWidget* getForm(FormType type, QWidget* parent = nullptr);
 

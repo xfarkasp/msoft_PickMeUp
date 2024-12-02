@@ -1,7 +1,7 @@
 #pragma once
 #include <vector>
 #include "DataHandler.h"
-
+// Representation of single locker in an Automat
 enum class LockerSize
 {
     SMALL,

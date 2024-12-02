@@ -6,11 +6,12 @@
 #include <stdexcept>
 #include <QString>
 
+// Class for handling database data
 class DataHandler
 {
 
 public:
-
+// Enumeration classes
 enum class UserType
 {
 	Basic,
@@ -55,7 +56,7 @@ enum class ReportStatus
 	Working,
 	NoReport
 };
-
+// Enum to string conversions
 static QString taskStatusToString(TaskStatus status)
 {
 	switch (status) {
@@ -95,7 +96,7 @@ static QString reportStatusToString(ReportStatus status)
 		return "Unknown";
 	}
 }
-
+//Representation of a user in the database
 struct User
 {
 	User(int32_t id, std::string name, std::string password, std::string email, UserType type)
@@ -108,7 +109,7 @@ struct User
 	std::string m_email;
 	UserType m_userType;
 };
-
+//Representation of a package in the database
 struct Parcel
 {
 	Parcel(int32_t id, std::string sender, std::string reviever, std::string sAddress, std::string dAddress)
@@ -135,7 +136,7 @@ struct Parcel
 	ParcelStatus m_status;
 	ParcelSize m_size;
 };
-
+// Representation of a task in the database
 struct Task
 {
 	Task(int32_t id, int32_t objectId, std::string asignee, std::string creator, std::string location, TaskType taskType)
@@ -150,7 +151,7 @@ struct Task
 	TaskType m_taskType;
 	TaskStatus m_taskStatus;
 };
-
+// Representation of a report in the database
 struct Report
 {
 	Report(int32_t id, std::string location, time_t reportDate, ReportStatus status)
@@ -162,7 +163,7 @@ struct Report
 	time_t m_reportDate;
 	ReportStatus m_status;
 };
-
+// Representation of a repair request in the database
 struct RepairRequest
 {
 	RepairRequest(int32_t id, std::string reporterName, std::string severity, std::string description, std::string location)
@@ -179,13 +180,13 @@ struct RepairRequest
 public:
 	DataHandler(const DataHandler&) = delete;
 	DataHandler& operator=(const DataHandler&) = delete;
-	
+	// Get the instance of the datahandler (singleton)
 	static DataHandler& getInstance()
 	{
 		static DataHandler instance;
 		return instance;
 	}
-
+	// Gets a user from the database if exist and password matches
 	User& getUser(const std::string& email, const std::string& password)
 	{
 		auto it = m_users.find(email);
@@ -194,7 +195,7 @@ public:
 		}
 		throw std::runtime_error("Invalid email or password");
 	}
-
+	// Writtes a new package to the database
 	int32_t writteParcel(const std::string& sender, const std::string& reviever, const std::string& sAddress, const std::string& dAddress)
 	{
 		int32_t assignedId = m_currentParcelId;
@@ -202,7 +203,7 @@ public:
 		m_currentParcelId++;
 		return assignedId;
 	}
-
+	// Writtes a new task to the database 
 	int32_t writteTask(int32_t objectId, std::string asignee, std::string creator, std::string location, TaskType taskType)
 	{
 		int32_t assignedId = m_currentTaskId;
@@ -210,7 +211,7 @@ public:
 		m_currentTaskId++;
 		return assignedId;
 	}
-
+	// Writtes a new repair request to the database
 	int32_t writteRepair(std::string reporterName, std::string severity, std::string description, std::string location)
 	{
 		int32_t assignedId = m_currentTaskId;
@@ -218,7 +219,7 @@ public:
 		m_currentRepairId++;
 		return assignedId;
 	}
-
+	// Gets a package from the database, if exists
 	Parcel& getParcel(int32_t parcelId)
 	{
 		auto it = m_parcels.find(parcelId);
@@ -227,8 +228,9 @@ public:
 		}
 		throw std::runtime_error("Parcel does not exist");
 	}
-
+	// Gets the task list from the database
 	std::map<int32_t, Task> getTasks() { return m_tasks; }
+	// Gets the report list from the database
 	std::map<int32_t, Report> getReports() { return m_reports; }
 
 private:
@@ -254,5 +256,4 @@ private:
 	std::map<int32_t, Task> m_tasks;
 	std::map<int32_t, Report> m_reports;
 	std::map<int32_t, RepairRequest> m_repairRequest;
-
 };

@@ -14,6 +14,7 @@ public:
     ConnectionHandler() {};
     AutomatController connectAutomat() { return AutomatController{}; }
     std::string getMessage() { return "message from automat"; }
-    QWidget* connectionGui(int32_t id, QWidget* parent = nullptr);  
-    static int findWidget(std::string widgetName, QWidget* parent);
+    QWidget* connectionGui(int32_t id, QWidget* parent = nullptr);  // This just create the gui page
+    void sendPackageId(int32_t){} //not implemented
+    static int findWidget(std::string widgetName, QWidget* parent); // This is just a gui helper function
 };

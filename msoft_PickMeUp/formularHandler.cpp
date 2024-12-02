@@ -3,8 +3,7 @@
 #include <QStackedWidget>
 #include "ConnectionHandler.h"
 
-FormularHandler::FormularHandler() {}
-
+// Metod returns a form creation instance based on the type of the requested form
 QWidget* FormularHandler::getForm(FormType type, QWidget* parent)
 {
     switch (type)
@@ -18,8 +17,10 @@ QWidget* FormularHandler::getForm(FormType type, QWidget* parent)
     }
 }
 
+// Creates a from for creating a new parcel to send
 QWidget* FormularHandler::createSendParcelForm(QWidget* parent)
 {
+    // Create the gui elements
     QWidget* form = new QWidget(parent);
     QVBoxLayout* layout = new QVBoxLayout(form);
 
@@ -51,6 +52,7 @@ QWidget* FormularHandler::createSendParcelForm(QWidget* parent)
     layout->addWidget(submitButton);
 
     connect(submitButton, &QPushButton::clicked, parent, [parent, senderInput, recipientInput, sourceInput, destinationInput] {
+        // Vlaidation proccess
         if (senderInput->text().isEmpty()) {
             QMessageBox::warning(parent, "Validation Error", "Sender Name is required.");
             return;
@@ -68,6 +70,7 @@ QWidget* FormularHandler::createSendParcelForm(QWidget* parent)
             return;
         }
 
+        // Writte the new parcel to the database
         int32_t id = DataHandler::getInstance().writteParcel(senderInput->text().toStdString(),
                                                 recipientInput->text().toStdString(),
                                                 sourceInput->text().toStdString(),
@@ -79,8 +82,8 @@ QWidget* FormularHandler::createSendParcelForm(QWidget* parent)
             return;
         }
 
+        // Create connection to automat
         ConnectionHandler connection;
-
         QWidget* connectionPage = connection.connectionGui(id, parent);
         connectionPage->setObjectName("ReceiveParcelPage");
         stackedWidget->addWidget(connectionPage);
@@ -90,8 +93,10 @@ QWidget* FormularHandler::createSendParcelForm(QWidget* parent)
     return form;
 }
 
+// create a form for requesting automat repair 
 QWidget* FormularHandler::createRepairTaskForm(QWidget* parent)
 {
+    // Create the gui elements
     QWidget* form = new QWidget(parent);
     QVBoxLayout* layout = new QVBoxLayout(form);
 
@@ -123,6 +128,7 @@ QWidget* FormularHandler::createRepairTaskForm(QWidget* parent)
     layout->addWidget(submitButton);
 
     connect(submitButton, &QPushButton::clicked, parent, [=] {
+        // Validate inputed data
         if (reporterNameInput->text().isEmpty()) {
             QMessageBox::warning(parent, "Validation Error", "Field required.");
             return;
@@ -147,15 +153,16 @@ QWidget* FormularHandler::createRepairTaskForm(QWidget* parent)
         }
 
         DataHandler& dataHandler = DataHandler::getInstance();
-
+        // Writte repair request to database
         int32_t repairId = dataHandler.writteRepair(reporterNameInput->text().toStdString(),
                                                                    severityInput->text().toStdString(),
                                                                    descriptionInput->text().toStdString(),
                                                                    locationInput->text().toStdString());
-
+        // Create a task for the repair with referenced repairRequest data
         dataHandler.writteTask(repairId, std::string{}, "Operator", locationInput->text().toStdString(), DataHandler::TaskType::Repair);
         QString message = QString("Repair was requested!");
         QMessageBox::information(nullptr, "Repair Details", message);
+        // Return to main menu
         stackedWidget->setCurrentIndex(ConnectionHandler::findWidget("OperatorMenu", parent));
         });
 

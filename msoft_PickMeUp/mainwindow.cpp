@@ -25,37 +25,34 @@ MainWindow::MainWindow(QWidget* parent)
 
 MainWindow::~MainWindow() {}
 
+// Creation of the login page with widgets
 QWidget* MainWindow::createLoginPage()
 {
     QWidget* loginPage = new QWidget(this);
     QVBoxLayout* layout = new QVBoxLayout(loginPage);
 
-    // Username
     QLabel* usernameLabel = new QLabel("Username:", loginPage);
     QLineEdit* usernameInput = new QLineEdit(loginPage);
     layout->addWidget(usernameLabel);
     layout->addWidget(usernameInput);
 
-    // Password
     QLabel* passwordLabel = new QLabel("Password:", loginPage);
     QLineEdit* passwordInput = new QLineEdit(loginPage);
     passwordInput->setEchoMode(QLineEdit::Password);
     layout->addWidget(passwordLabel);
     layout->addWidget(passwordInput);
 
-    // Login Button
     QPushButton* loginButton = new QPushButton("Login", loginPage);
     layout->addWidget(loginButton);
 
-    // Switch to Registration Button
     QPushButton* toRegisterButton = new QPushButton("Register Here", loginPage);
     layout->addWidget(toRegisterButton);
 
-    // Connect signals
     connect(loginButton, &QPushButton::clicked, this, [this, usernameInput, passwordInput]
         {
             QString username = usernameInput->text();
             QString password = passwordInput->text();
+            // find the user in the login datbase and check if password is correct
             handleLogin(username.toStdString(), password.toStdString());
         });
     connect(toRegisterButton, &QPushButton::clicked, this, &MainWindow::switchToRegistrationPage);
@@ -63,50 +60,47 @@ QWidget* MainWindow::createLoginPage()
     return loginPage;
 }
 
+// Create the registration page
 QWidget* MainWindow::createRegistrationPage() {
     QWidget* registrationPage = new QWidget(this);
     QVBoxLayout* layout = new QVBoxLayout(registrationPage);
 
-    // Username
     QLabel* usernameLabel = new QLabel("Username:", registrationPage);
     QLineEdit* usernameInput = new QLineEdit(registrationPage);
     layout->addWidget(usernameLabel);
     layout->addWidget(usernameInput);
 
-    // Password
     QLabel* passwordLabel = new QLabel("Password:", registrationPage);
     QLineEdit* passwordInput = new QLineEdit(registrationPage);
     passwordInput->setEchoMode(QLineEdit::Password);
     layout->addWidget(passwordLabel);
     layout->addWidget(passwordInput);
 
-    // Confirm Password
     QLabel* confirmPasswordLabel = new QLabel("Confirm Password:", registrationPage);
     QLineEdit* confirmPasswordInput = new QLineEdit(registrationPage);
     confirmPasswordInput->setEchoMode(QLineEdit::Password);
     layout->addWidget(confirmPasswordLabel);
     layout->addWidget(confirmPasswordInput);
 
-    // Register Button
     QPushButton* registerButton = new QPushButton("Register", registrationPage);
     layout->addWidget(registerButton);
 
-    // Switch to Login Button
     QPushButton* toLoginButton = new QPushButton("Back to Login", registrationPage);
     layout->addWidget(toLoginButton);
 
-    // Connect signals
     connect(registerButton, &QPushButton::clicked, this, &MainWindow::handleRegistration);
     connect(toLoginButton, &QPushButton::clicked, this, &MainWindow::switchToLoginPage);
 
     return registrationPage;
 }
 
+// Create the menu page
 QWidget* MainWindow::createMenuPage(const DataHandler::User& user)
 {
     QWidget* menuWidget = new QWidget(this);
     QGridLayout* gridLayout = new QGridLayout(menuWidget);
 
+    // Create the menu page for the normal user mainly for sending and recieving packages
     if (user.m_userType == DataHandler::UserType::Basic)
     {
         menuWidget->setObjectName("BasicMenu");
@@ -128,6 +122,7 @@ QWidget* MainWindow::createMenuPage(const DataHandler::User& user)
 
         connect(sendParcelButton, &QPushButton::clicked, this, [this]
             {
+                // Create a form for sendign a package
                 FormularHandler formUi;
                 QWidget* receiveParcelPage = formUi.getForm(FormType::SendParcel, this);
                 receiveParcelPage->setObjectName("ReceiveParcelPage");
@@ -137,26 +132,28 @@ QWidget* MainWindow::createMenuPage(const DataHandler::User& user)
 
         connect(logOutButton, &QPushButton::clicked, this, [this]
             {
+                // Log out the user
                 switchToLoginPage();
             });
 
     }
-
+    // Create the menu page for the normal FreeLance Courier, this menu will have task, which the currie can complete
     if (user.m_userType == DataHandler::UserType::FreelanceCourier)
     {
         menuWidget->setObjectName("FreelanceCourierMenu");
         QPushButton* taskListButton = new QPushButton("Task List", menuWidget);
         QPushButton* logOutButton = new QPushButton("Log out", menuWidget);
 
-        // Set tile styles (optional)
         QList<QPushButton*> buttons = { taskListButton, logOutButton };
         for (QPushButton* button : buttons) {
             button->setFixedSize(150, 150); // Set size
-            button->setStyleSheet("font-size: 16px; color: black; background-color: #f0f0f0; border-radius: 10px;"); // Style
+            button->setStyleSheet("font-size: 16px; color: black; background-color: #f0f0f0; border-radius: 10px;");
         }
 
+        // Get the list ov available tasks
         connect(taskListButton, &QPushButton::clicked, this, [this]
             {
+                // Create and switch to the task apge
                 QWidget* taskPage = createTaskList();
                 stackedWidget->addWidget(taskPage);
                 stackedWidget->setCurrentWidget(taskPage);
@@ -167,24 +164,24 @@ QWidget* MainWindow::createMenuPage(const DataHandler::User& user)
                 switchToLoginPage();
             });
 
-        // Add tiles to the grid layout
         gridLayout->addWidget(taskListButton, 0, 0);
         gridLayout->addWidget(logOutButton, 0, 1);
     }
 
+    // Create the menu page for the Operator user to check automat reports and create report requests
     if (user.m_userType == DataHandler::UserType::Operator)
     {
         menuWidget->setObjectName("OperatorMenu");
         QPushButton* reportListButton = new QPushButton("Report List", menuWidget);
         QPushButton* logOutButton = new QPushButton("Logout", menuWidget);
 
-        // Set tile styles (optional)
         QList<QPushButton*> buttons = { reportListButton, logOutButton };
         for (QPushButton* button : buttons) {
-            button->setFixedSize(150, 150); // Set size
-            button->setStyleSheet("font-size: 16px; color: black; background-color: #f0f0f0; border-radius: 10px;"); // Style
+            button->setFixedSize(150, 150);
+            button->setStyleSheet("font-size: 16px; color: black; background-color: #f0f0f0; border-radius: 10px;");
         }
 
+        // Return the list of available reports
         connect(reportListButton, &QPushButton::clicked, this, [this]
             {
                 QWidget* reportPage = createReportList();
@@ -198,7 +195,6 @@ QWidget* MainWindow::createMenuPage(const DataHandler::User& user)
                 switchToLoginPage();
             });
 
-        // Add tiles to the grid layout
         gridLayout->addWidget(reportListButton, 0, 0);
         gridLayout->addWidget(logOutButton, 0, 1);
     }
@@ -206,6 +202,7 @@ QWidget* MainWindow::createMenuPage(const DataHandler::User& user)
     return menuWidget;
 }
 
+// Create task list from the task database in DataHandler
 QWidget* MainWindow::createTaskList()
 {
     DataHandler& dataHandler = DataHandler::getInstance();
@@ -256,6 +253,7 @@ QWidget* MainWindow::createTaskList()
     return scrollArea;
 }
 
+// Create report list widget from reports in the TaskData
 QWidget* MainWindow::createReportList()
 {
     DataHandler& dataHandler = DataHandler::getInstance();
@@ -302,16 +300,20 @@ QWidget* MainWindow::createReportList()
     return scrollArea;
 }
 
+// Switch gui to login page
 void MainWindow::switchToLoginPage()
 {
     stackedWidget->setCurrentIndex(0);
 }
 
+// Switch gui to registratin page
 void MainWindow::switchToRegistrationPage()
 {
     stackedWidget->setCurrentIndex(1);
 }
 
+// Find the user in the database and check if the inserted password is correct
+// if yes switch to login page, else show error messsage
 void MainWindow::handleLogin(std::string mail, std::string password) {
     DataHandler& userHandler = userHandler.getInstance();
     try
@@ -327,6 +329,7 @@ void MainWindow::handleLogin(std::string mail, std::string password) {
     }
 }
 
+// Fake registration proccess(this is not implemented)
 void MainWindow::handleRegistration() {
     QMessageBox::information(this, "Register", "Registration functionality not implemented yet!");
 }
