@@ -10,6 +10,9 @@
 #include <QScrollArea>
 #include "formularHandler.h"
 #include "ConnectionHandler.h"
+#include <QTableWidgetItem>
+#include <QHeaderView>
+
 
 MainWindow::MainWindow(QWidget* parent)
     : QMainWindow(parent), stackedWidget(new QStackedWidget(this))
@@ -24,6 +27,20 @@ MainWindow::MainWindow(QWidget* parent)
 }
 
 MainWindow::~MainWindow() {}
+
+int32_t MainWindow::findWidget(std::string widgetName, QWidget* parent)
+{
+    int targetIndex = -1;
+    QList<QWidget*> widgets = parent->findChildren<QWidget*>();
+    QStackedWidget* stackedWidget = parent->findChild<QStackedWidget*>();
+    QList<QWidget*>::const_iterator it;
+    for (it = widgets.begin(); it != widgets.end(); ++it) {
+        QWidget* widget = *it;
+        if (widget->objectName() == widgetName) {
+            return stackedWidget->indexOf(widget);
+        }
+    }
+}
 
 // Creation of the login page with widgets
 QWidget* MainWindow::createLoginPage()
@@ -206,49 +223,91 @@ QWidget* MainWindow::createMenuPage(const DataHandler::User& user)
 QWidget* MainWindow::createTaskList()
 {
     DataHandler& dataHandler = DataHandler::getInstance();
+
+    // Create a container widget for the table
     QWidget* containerWidget = new QWidget();
     QVBoxLayout* mainLayout = new QVBoxLayout(containerWidget);
 
-    for (auto& taskPair : dataHandler.getTasks())
+    // Create the table widget
+    QTableWidget* taskTable = new QTableWidget();
+    taskTable->setColumnCount(6); // Columns for Assignee, Creator, Location, Type, Status, and Action Button
+    taskTable->setHorizontalHeaderLabels({ "Assignee", "Creator", "Location", "Type", "State", "Action" });
+
+    // Populate the table with tasks
+    const auto& tasks = dataHandler.getTasks();
+    taskTable->setRowCount(static_cast<int>(tasks.size()));
+
+    int row = 0;
+    for (const auto& taskPair : tasks)
     {
-
-        QVBoxLayout* layout = new QVBoxLayout(this);
         const auto& task = taskPair.second;
-        // Create labels for task information
-        QLabel* assigneeLabel = new QLabel("Assignee: " + QString::fromStdString(task.m_asignee), this);
-        QLabel* creatorLabel = new QLabel("Creator: " + QString::fromStdString(task.m_creator), this);
-        QLabel* locationLabel = new QLabel("Location: " + QString::fromStdString(task.m_location), this);
-        QLabel* typeLabel = new QLabel("Type: " +  DataHandler::taskTypeToString(task.m_taskType));
-        QLabel* statusLabel = new QLabel("State: " +  DataHandler::taskStatusToString(task.m_taskStatus));
 
-        layout->addWidget(assigneeLabel);
-        layout->addWidget(creatorLabel);
-        layout->addWidget(locationLabel);
-        layout->addWidget(typeLabel);
-        layout->addWidget(statusLabel);
+        // Create table items for task properties
+        QTableWidgetItem* assigneeItem = new QTableWidgetItem(QString::fromStdString(task.m_asignee));
+        QTableWidgetItem* creatorItem = new QTableWidgetItem(QString::fromStdString(task.m_creator));
+        QTableWidgetItem* locationItem = new QTableWidgetItem(QString::fromStdString(task.m_location));
+        QTableWidgetItem* typeItem = new QTableWidgetItem(DataHandler::taskTypeToString(task.m_taskType));
+        QTableWidgetItem* statusItem = new QTableWidgetItem(DataHandler::taskStatusToString(task.m_taskStatus));
 
-        mainLayout->addLayout(layout);
+        // Add items to the table
+        taskTable->setItem(row, 0, assigneeItem);
+        taskTable->setItem(row, 1, creatorItem);
+        taskTable->setItem(row, 2, locationItem);
+        taskTable->setItem(row, 3, typeItem);
+        taskTable->setItem(row, 4, statusItem);
 
+        // Create an action button and add it to the table
         QPushButton* actionButton = new QPushButton("Execute");
-        layout->addWidget(actionButton);
+        taskTable->setCellWidget(row, 5, actionButton);
+
+        // Connect the button to perform the desired action
         QObject::connect(actionButton, &QPushButton::clicked, this, [=]() {
-            QString message = QString("Navigation system is navigating you.");
-               
-            QMessageBox::information(nullptr, "Task Details", message);
+
             ConnectionHandler connection;
 
-            QWidget* connectionPage = connection.connectionGui(task.m_objectId, this);
+            QWidget* connectionPage = connection.connectionGui(task.m_id, ConnectionHandler::ConnectionType::Delivery, this);
             connectionPage->setObjectName("ReceiveParcelPage");
             stackedWidget->addWidget(connectionPage);
             stackedWidget->setCurrentWidget(connectionPage);
             });
+
+        ++row;
     }
 
-    containerWidget->setLayout(mainLayout);
+    // Adjust the table settings
+    taskTable->setEditTriggers(QAbstractItemView::NoEditTriggers); // Disable editing
+    taskTable->setSelectionMode(QAbstractItemView::NoSelection);   // Disable selection
+    taskTable->horizontalHeader()->setStretchLastSection(true);   // Stretch the last column
+    taskTable->resizeColumnsToContents();
 
+    // Add the table to the layout
+    mainLayout->addWidget(taskTable);
+
+    // Create a scroll area for the table
     QScrollArea* scrollArea = new QScrollArea();
     scrollArea->setWidget(containerWidget);
-    scrollArea->setWidgetResizable(false);
+    scrollArea->setWidgetResizable(true);
+
+    QPushButton* filterButton = new QPushButton("Filter");
+    QPushButton* backButton = new QPushButton("Back");
+    
+    mainLayout->addWidget(filterButton);
+    mainLayout->addWidget(backButton);
+    connect(filterButton, &QPushButton::clicked, this, [=]() {
+        for (int i = 0; i < taskTable->rowCount(); ++i)
+        {
+            QTableWidgetItem* statusItem = taskTable->item(i, 4); // Get the Status column
+            if (statusItem && statusItem->text() == DataHandler::taskStatusToString(DataHandler::TaskStatus::Completed))
+            {
+                taskTable->setRowHidden(i, true);
+            }
+        }
+        });
+
+    connect(backButton, &QPushButton::clicked, this, [this] 
+        {
+            stackedWidget->setCurrentIndex(findWidget("FreelanceCourierMenu", this));
+        });
 
     return scrollArea;
 }

@@ -11,10 +11,17 @@
 class ConnectionHandler : public QObject
 {
 public:
+    enum class ConnectionType
+    {
+        Delivery,
+        Creation
+    };
+public:
     ConnectionHandler() {};
     AutomatController connectAutomat() { return AutomatController{}; }
     std::string getMessage() { return "message from automat"; }
-    QWidget* connectionGui(int32_t id, QWidget* parent = nullptr);  // This just create the gui page
+    QWidget* connectionGui(int32_t id, ConnectionType conType, QWidget* parent = nullptr);  // This just create the gui page
     void sendPackageId(int32_t){} //not implemented
     static int findWidget(std::string widgetName, QWidget* parent); // This is just a gui helper function
 };
+

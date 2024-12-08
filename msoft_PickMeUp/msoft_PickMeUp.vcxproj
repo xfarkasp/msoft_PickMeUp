@@ -108,6 +108,7 @@
     <ClCompile Include="main.cpp" />
     <ClCompile Include="mainwindow.cpp" />
     <ClCompile Include="DataHandler.h" />
+    <ClCompile Include="Navigation.cpp" />
   </ItemGroup>
   <ItemGroup>
     <QtMoc Include="mainwindow.h" />
@@ -116,6 +117,10 @@
     <ClInclude Include="AutomatController.h" />
     <ClInclude Include="ConnectionHandler.h" />
     <ClInclude Include="formularHandler.h" />
+    <ClInclude Include="Navigation.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <Image Include="..\..\..\..\Pictures\Screenshots\map.png" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Condition="Exists('$(QtMsBuild)\qt.targets')">

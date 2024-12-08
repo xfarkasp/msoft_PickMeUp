@@ -40,7 +40,8 @@ enum class ParcelSize
 enum class TaskStatus
 {
 	Created,
-	Assigned
+	Assigned,
+	Completed
 };
 
 enum class TaskType
@@ -64,6 +65,8 @@ static QString taskStatusToString(TaskStatus status)
 		return "Created";
 	case TaskStatus::Assigned:
 		return "Assigned";
+	case TaskStatus::Completed:
+		return "Completed";
 	default:
 		return "Unknown";
 	}
@@ -140,7 +143,7 @@ struct Parcel
 struct Task
 {
 	Task(int32_t id, int32_t objectId, std::string asignee, std::string creator, std::string location, TaskType taskType)
-		:m_id(m_id), m_objectId(objectId), m_asignee(asignee), m_creator(creator), m_location(location), m_taskType(taskType), m_taskStatus(TaskStatus::Created)
+		:m_id(id), m_objectId(objectId), m_asignee(asignee), m_creator(creator), m_location(location), m_taskType(taskType), m_taskStatus(TaskStatus::Created)
 	{}
 
 	int32_t m_id;
@@ -199,7 +202,7 @@ public:
 	int32_t writteParcel(const std::string& sender, const std::string& reviever, const std::string& sAddress, const std::string& dAddress)
 	{
 		int32_t assignedId = m_currentParcelId;
-		m_parcels.emplace(assignedId, Parcel{ m_currentParcelId , sender, reviever, sAddress,  dAddress});
+		m_parcels.emplace(assignedId, Parcel{ assignedId , sender, reviever, sAddress,  dAddress});
 		m_currentParcelId++;
 		return assignedId;
 	}
@@ -207,15 +210,24 @@ public:
 	int32_t writteTask(int32_t objectId, std::string asignee, std::string creator, std::string location, TaskType taskType)
 	{
 		int32_t assignedId = m_currentTaskId;
-		m_tasks.emplace(assignedId, Task{ m_currentTaskId , objectId, asignee, creator,  location, taskType });
+		m_tasks.emplace(assignedId, Task{ assignedId , objectId, asignee, creator,  location, taskType });
 		m_currentTaskId++;
 		return assignedId;
+	}
+	// Gets a task from the database, if exists
+	Task* getTask(int32_t taskId)
+	{
+		auto it = m_tasks.find(taskId);
+		if (it != m_tasks.end()) {
+			return &(it->second);
+		}
+		return nullptr;
 	}
 	// Writtes a new repair request to the database
 	int32_t writteRepair(std::string reporterName, std::string severity, std::string description, std::string location)
 	{
 		int32_t assignedId = m_currentTaskId;
-		m_repairRequest.emplace(assignedId, RepairRequest{ m_currentRepairId , reporterName, severity, description,  location });
+		m_repairRequest.emplace(assignedId, RepairRequest{ assignedId , reporterName, severity, description,  location });
 		m_currentRepairId++;
 		return assignedId;
 	}
@@ -243,6 +255,13 @@ private:
 		m_users.emplace("d", User{ 3, "Mr.Tech", "d", "operator@mail.com", UserType::Technician });
 
 		m_reports.emplace(0, Report{ 0, "Location 0", 0, ReportStatus::Malfunction });
+		
+		Task filler1 = Task{ m_currentTaskId++, -1,"Darius", "Ado", "Rumunsko", TaskType::Delivery };
+		Task filler2 = Task{ m_currentTaskId++, -2,"Dusan", "Ado", "Rumunsko", TaskType::Delivery };
+		filler1.m_taskStatus = TaskStatus::Completed;
+		filler2.m_taskStatus = TaskStatus::Assigned;
+		m_tasks.emplace(filler1.m_id, filler1);
+		m_tasks.emplace(filler2.m_id, filler2);
 	}
 
 private:

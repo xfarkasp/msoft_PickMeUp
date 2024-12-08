@@ -2,6 +2,8 @@
 #include "ConnectionHandler.h"
 #include "DataHandler.h"
 #include <QStackedWidget>
+#include <QPixmap>
+#include "Navigation.h"
 
 // Find a GuI page index to switch to (useful when you don't know the page indxes anymore)
 int32_t ConnectionHandler::findWidget(std::string widgetName, QWidget* parent)
@@ -19,25 +21,42 @@ int32_t ConnectionHandler::findWidget(std::string widgetName, QWidget* parent)
 }
 
 // Cereate the connection gui
-QWidget* ConnectionHandler::connectionGui(int32_t id, QWidget* parent) {
+QWidget* ConnectionHandler::connectionGui(int32_t id, ConnectionType conType, QWidget* parent) {
 
     QWidget* connectionPage = new QWidget(parent);
     QVBoxLayout* layout = new QVBoxLayout(connectionPage);
     QLabel* messageLabel = new QLabel("Click the button to connect to Automat", connectionPage);
-    messageLabel->setAlignment(Qt::AlignCenter);
-
+    
     QPushButton* connectButton = new QPushButton("Connect", connectionPage);
     QPushButton* confirmButton = new QPushButton("Confirm", connectionPage);
     QPushButton* mainMenuButton = new QPushButton("Main Menu", connectionPage);
+    QPushButton* simulateError = new QPushButton("Simulate full", connectionPage);
     confirmButton->setVisible(false);
     mainMenuButton->setVisible(false);
 
+    connect(simulateError, &QPushButton::clicked, [=]() 
+        {
+            QString message = QString("Automat is full, plese proceed to the nearest automat.");
+            QMessageBox::information(nullptr, "Warrning", message);
+            messageLabel->setText("Please move to the nearest automat!\n");
+            Navigation::navigate();
+        });
+
     // Simulate connection to the automat
-    connect(connectButton, &QPushButton::clicked, [=]() {
-        DataHandler::Parcel parcel = DataHandler::getInstance().getParcel(id);
+    connect(connectButton, &QPushButton::clicked, [=]() mutable {
+        DataHandler& dh = DataHandler::getInstance();
+        DataHandler::Task* task = dh.getTask(id);
+        if (conType == ConnectionType::Delivery)
+        {
+            id = task->m_objectId;
+            Navigation::navigate();
+
+        }
+        DataHandler::Parcel parcel = dh.getParcel(id);
         // If the locker is opened by a courier
         if (parcel.m_status == DataHandler::ParcelStatus::Sent)
         {
+            Navigation::navigate();
             messageLabel->setText("Connected to Automat!\n Pick up parcel.");
         }
         else
@@ -50,13 +69,20 @@ QWidget* ConnectionHandler::connectionGui(int32_t id, QWidget* parent) {
         });
 
     // Simulate Inserting a package
-    connect(confirmButton, &QPushButton::clicked, [=]() {
+    connect(confirmButton, &QPushButton::clicked, [=]() mutable {
         // Get the package info from the database
-        DataHandler::Parcel& parcel = DataHandler::getInstance().getParcel(id);
+        DataHandler& dh = DataHandler::getInstance();
+        DataHandler::Task* task = dh.getTask(id);
+        if (conType == ConnectionType::Delivery)
+        {
+            id = task->m_objectId;
+        }
+        DataHandler::Parcel& parcel = dh.getParcel(id);
         // When courier is inserting a package
         if (parcel.m_status == DataHandler::ParcelStatus::Sent)
         {
             QString message = QString("Navigation system is navigating you to your destination.");
+            Navigation::navigate();
             QMessageBox::information(nullptr, "Task Details", message);
             messageLabel->setText("Connected to Automat!\n Insert delivered package.");
             parcel.setState(DataHandler::ParcelStatus::Arrived);
@@ -77,14 +103,20 @@ QWidget* ConnectionHandler::connectionGui(int32_t id, QWidget* parent) {
         }
         
         });
-    connect(mainMenuButton, &QPushButton::clicked, [=]() {
+    connect(mainMenuButton, &QPushButton::clicked, [=]() mutable {
         messageLabel->setText("Click the button to connect to Automat");
         connectButton->setVisible(true);
         confirmButton->setVisible(false);
         mainMenuButton->setVisible(false);
         // get package info from the database
-        DataHandler::Parcel& parcel = DataHandler::getInstance().getParcel(id);
-
+        DataHandler& dh = DataHandler::getInstance();
+        DataHandler::Task* task = dh.getTask(id);
+        if (conType == ConnectionType::Delivery)
+        {
+            id = task->m_objectId;
+        }
+        DataHandler::Parcel& parcel = dh.getParcel(id);
+        
         QStackedWidget* stackedWidget = parent->findChild<QStackedWidget*>();
         if (!stackedWidget)
         {
@@ -106,6 +138,7 @@ QWidget* ConnectionHandler::connectionGui(int32_t id, QWidget* parent) {
         else
         {
             // Return to main menu
+            task->m_taskStatus = DataHandler::TaskStatus::Completed;
             stackedWidget->setCurrentIndex(findWidget("FreelanceCourierMenu", parent));
         }
         

@@ -84,7 +84,7 @@ QWidget* FormularHandler::createSendParcelForm(QWidget* parent)
 
         // Create connection to automat
         ConnectionHandler connection;
-        QWidget* connectionPage = connection.connectionGui(id, parent);
+        QWidget* connectionPage = connection.connectionGui(id, ConnectionHandler::ConnectionType::Creation, parent);
         connectionPage->setObjectName("ReceiveParcelPage");
         stackedWidget->addWidget(connectionPage);
         stackedWidget->setCurrentWidget(connectionPage);
