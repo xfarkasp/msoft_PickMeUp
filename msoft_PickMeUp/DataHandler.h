@@ -5,6 +5,7 @@
 #include <map>
 #include <stdexcept>
 #include <QString>
+#include <qpixmap.h>
 
 // Class for handling database data
 class DataHandler
@@ -21,6 +22,8 @@ enum class UserType
 	Operator
 };
 
+//---------------------------------------------------------------------------
+
 enum class ParcelStatus
 {
 	Created,
@@ -30,6 +33,8 @@ enum class ParcelStatus
 	ERROR
 };
 
+//---------------------------------------------------------------------------
+
 enum class ParcelSize
 {
 	SMALL,
@@ -37,19 +42,28 @@ enum class ParcelSize
 	BIG,
 };
 
+//---------------------------------------------------------------------------
+
 enum class TaskStatus
 {
 	Created,
 	Assigned,
-	Completed
+	Completed,
+	Pending,
+	AcceptedReclamation,
+	DeniedReclamation
 };
+
+//---------------------------------------------------------------------------
 
 enum class TaskType
 {
 	Delivery,
 	Repair,
-	Pain
+	Reclamation
 };
+
+//---------------------------------------------------------------------------
 
 enum class ReportStatus
 {
@@ -57,6 +71,25 @@ enum class ReportStatus
 	Working,
 	NoReport
 };
+
+//---------------------------------------------------------------------------
+
+// Enum to string parcel
+static QString parcelStatusToString(ParcelStatus status)
+{
+	switch (status)
+	{
+	case ParcelStatus::Created: return "Created";
+	case ParcelStatus::ToBeSent: return "ToBeSent";
+	case ParcelStatus::Sent: return "Sent";
+	case ParcelStatus::Arrived: return "Arrived";
+	case ParcelStatus::ERROR: return "ERROR";
+	default: return "Unknown";
+	}
+}
+
+//---------------------------------------------------------------------------
+
 // Enum to string conversions
 static QString taskStatusToString(TaskStatus status)
 {
@@ -67,10 +100,18 @@ static QString taskStatusToString(TaskStatus status)
 		return "Assigned";
 	case TaskStatus::Completed:
 		return "Completed";
+	case TaskStatus::Pending:
+		return "Pending";
+	case TaskStatus::AcceptedReclamation:
+		return "Accepted Reclamation";
+	case TaskStatus::DeniedReclamation:
+		return "Denied Reclamation";
 	default:
 		return "Unknown";
 	}
 }
+
+//---------------------------------------------------------------------------
 
 static QString taskTypeToString(TaskType type)
 {
@@ -79,12 +120,14 @@ static QString taskTypeToString(TaskType type)
 		return "Delivery";
 	case TaskType::Repair:
 		return "Repair";
-	case TaskType::Pain:
-		return "Pain";
+	case TaskType::Reclamation:
+		return "Reclamation";
 	default:
 		return "Unknown";
 	}
 }
+
+//---------------------------------------------------------------------------
 
 static QString reportStatusToString(ReportStatus status)
 {
@@ -99,6 +142,9 @@ static QString reportStatusToString(ReportStatus status)
 		return "Unknown";
 	}
 }
+
+//---------------------------------------------------------------------------
+
 //Representation of a user in the database
 struct User
 {
@@ -112,6 +158,9 @@ struct User
 	std::string m_email;
 	UserType m_userType;
 };
+
+//---------------------------------------------------------------------------
+
 //Representation of a package in the database
 struct Parcel
 {
@@ -139,11 +188,18 @@ struct Parcel
 	ParcelStatus m_status;
 	ParcelSize m_size;
 };
+
+//---------------------------------------------------------------------------
+
 // Representation of a task in the database
 struct Task
 {
 	Task(int32_t id, int32_t objectId, std::string asignee, std::string creator, std::string location, TaskType taskType)
-		:m_id(id), m_objectId(objectId), m_asignee(asignee), m_creator(creator), m_location(location), m_taskType(taskType), m_taskStatus(TaskStatus::Created)
+		:m_id(id), m_objectId(objectId), m_asignee(asignee), m_creator(creator), m_location(location), m_taskType(taskType), m_taskStatus(TaskStatus::Created), m_pixmap(QPixmap{}), m_description(std::string{})
+	{}
+
+	Task(int32_t id, int32_t objectId, std::string asignee, std::string creator, std::string location, TaskType taskType, QPixmap pixmap, std::string description)
+		:m_id(id), m_objectId(objectId), m_asignee(asignee), m_creator(creator), m_location(location), m_taskType(taskType), m_taskStatus(TaskStatus::Created), m_pixmap(pixmap), m_description(description)
 	{}
 
 	int32_t m_id;
@@ -153,7 +209,12 @@ struct Task
 	std::string m_location;
 	TaskType m_taskType;
 	TaskStatus m_taskStatus;
+	QPixmap m_pixmap;
+	std::string m_description; 
 };
+
+//---------------------------------------------------------------------------
+
 // Representation of a report in the database
 struct Report
 {
@@ -166,6 +227,9 @@ struct Report
 	time_t m_reportDate;
 	ReportStatus m_status;
 };
+
+//---------------------------------------------------------------------------
+
 // Representation of a repair request in the database
 struct RepairRequest
 {
@@ -180,6 +244,8 @@ struct RepairRequest
 	std::string m_location;
 };
 
+//---------------------------------------------------------------------------
+
 public:
 	DataHandler(const DataHandler&) = delete;
 	DataHandler& operator=(const DataHandler&) = delete;
@@ -189,6 +255,9 @@ public:
 		static DataHandler instance;
 		return instance;
 	}
+
+	//---------------------------------------------------------------------------
+
 	// Gets a user from the database if exist and password matches
 	User& getUser(const std::string& email, const std::string& password)
 	{
@@ -198,6 +267,9 @@ public:
 		}
 		throw std::runtime_error("Invalid email or password");
 	}
+
+	//---------------------------------------------------------------------------
+
 	// Writtes a new package to the database
 	int32_t writteParcel(const std::string& sender, const std::string& reviever, const std::string& sAddress, const std::string& dAddress)
 	{
@@ -206,6 +278,9 @@ public:
 		m_currentParcelId++;
 		return assignedId;
 	}
+
+	//---------------------------------------------------------------------------
+
 	// Writtes a new task to the database 
 	int32_t writteTask(int32_t objectId, std::string asignee, std::string creator, std::string location, TaskType taskType)
 	{
@@ -214,15 +289,33 @@ public:
 		m_currentTaskId++;
 		return assignedId;
 	}
+
+	//---------------------------------------------------------------------------
+
+	// Writtes a new reclamation task to the database 
+	int32_t writteTask(int32_t objectId, std::string asignee, std::string creator, std::string location, TaskType taskType, QPixmap image, std::string description)
+	{
+		int32_t assignedId = m_currentTaskId;
+		m_tasks.emplace(assignedId, Task{ assignedId , objectId, asignee, creator,  location, taskType, image,  description});
+		m_currentTaskId++;
+		return assignedId;
+	}
+
+	//---------------------------------------------------------------------------
+
 	// Gets a task from the database, if exists
-	Task* getTask(int32_t taskId)
+	Task& getTask(int32_t taskId)
 	{
 		auto it = m_tasks.find(taskId);
 		if (it != m_tasks.end()) {
-			return &(it->second);
+			return it->second;
 		}
-		return nullptr;
+		throw std::runtime_error("Task does not exist");
+
 	}
+
+	//---------------------------------------------------------------------------
+
 	// Writtes a new repair request to the database
 	int32_t writteRepair(std::string reporterName, std::string severity, std::string description, std::string location)
 	{
@@ -231,6 +324,9 @@ public:
 		m_currentRepairId++;
 		return assignedId;
 	}
+
+	//---------------------------------------------------------------------------
+
 	// Gets a package from the database, if exists
 	Parcel& getParcel(int32_t parcelId)
 	{
@@ -240,10 +336,23 @@ public:
 		}
 		throw std::runtime_error("Parcel does not exist");
 	}
+
+	//---------------------------------------------------------------------------
+
+	// Gets the parcel list from the database
+	std::map<int32_t, Parcel> getParcels() { return m_parcels; }
+
+	//---------------------------------------------------------------------------
+	
 	// Gets the task list from the database
 	std::map<int32_t, Task> getTasks() { return m_tasks; }
+
+	//---------------------------------------------------------------------------
+
 	// Gets the report list from the database
 	std::map<int32_t, Report> getReports() { return m_reports; }
+
+	//---------------------------------------------------------------------------
 
 private:
 	DataHandler()

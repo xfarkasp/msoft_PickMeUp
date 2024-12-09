@@ -1,6 +1,7 @@
-#include "AutomatController.h"
+﻿#include "AutomatController.h"
 #include "DataHandler.h"
 
+// USE CASE 1: Odošli balík a USE CASE 2: Doruč nový balík
 // Method to record new package to be delivered
 // See seqDiagram recordPackage
 bool AutomatController::recordPackage(int32_t id)
@@ -24,3 +25,5 @@ bool AutomatController::recordPackage(int32_t id)
     package.setState(DataHandler::ParcelStatus::Sent);
     return true;
 }
+
+//---------------------------------------------------------------------------

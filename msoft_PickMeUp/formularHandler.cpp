@@ -1,22 +1,30 @@
 #include "FormularHandler.h"
 #include "DataHandler.h"
 #include <QStackedWidget>
+#include <QTextEdit>
+#include <QFileDialog>
 #include "ConnectionHandler.h"
 
 // Metod returns a form creation instance based on the type of the requested form
-QWidget* FormularHandler::getForm(FormType type, QWidget* parent)
+QWidget* FormularHandler::getForm(int32_t parcelId, FormType type, QWidget* parent)
 {
     switch (type)
     {
-    case FormType::SendParcel:
+    case FormType::SendParcel: // USE CASE 1: Odošli balík
         return createSendParcelForm(parent);
-    case FormType::RequestRepair:
+    case FormType::RequestRepair:// USE CASE 10: Požiadaj o opravu automatu.
         return createRepairTaskForm(parent);
+    case FormType::Reclamation: // USE CASE 9 : Reklamuj balík
+        return createReclamationForm(parcelId, parent);
+    case FormType::ReclamationValidation: // USE CASE 9 : Reklamuj balík
+        return createRecValidationForm(parcelId, parent);
     default:
         return nullptr;
     }
 }
 
+//---------------------------------------------------------------------------
+// USE CASE 1: Odošli balík
 // Creates a from for creating a new parcel to send
 QWidget* FormularHandler::createSendParcelForm(QWidget* parent)
 {
@@ -93,6 +101,8 @@ QWidget* FormularHandler::createSendParcelForm(QWidget* parent)
     return form;
 }
 
+//---------------------------------------------------------------------------
+
 // create a form for requesting automat repair 
 QWidget* FormularHandler::createRepairTaskForm(QWidget* parent)
 {
@@ -168,3 +178,148 @@ QWidget* FormularHandler::createRepairTaskForm(QWidget* parent)
 
     return form;
 }
+
+//---------------------------------------------------------------------------
+// USE CASE 9 : Reklamuj balík
+QWidget* FormularHandler::createReclamationForm(int32_t objectId, QWidget* parent)
+{
+    QWidget* reclamationTab = new QWidget();
+    QVBoxLayout* reclamationLayout = new QVBoxLayout(reclamationTab);
+
+    QLabel* reclamationDescLabel = new QLabel("Reclamation Description:", reclamationTab);
+    QTextEdit* reclamationDescEdit = new QTextEdit(reclamationTab);
+    reclamationDescEdit->setPlaceholderText("No description provided.");
+
+    QLabel* reclamationPicLabel = new QLabel("Reclamation Picture:", reclamationTab);
+    QLabel* reclamationPicPreview = new QLabel("No picture available.", reclamationTab);
+    QPushButton* uploadImageButton = new QPushButton("Upload Image", reclamationTab);
+    QPushButton* sendButton = new QPushButton("Send", reclamationTab);
+
+    reclamationPicPreview->setAlignment(Qt::AlignCenter);
+    reclamationPicPreview->setStyleSheet("border: 1px solid gray;");
+    reclamationPicPreview->setFixedSize(200, 200);
+
+    QString statusText{ "Reclamation Status: Pending" };
+    DataHandler& dataHandler = DataHandler::getInstance();
+    for (const auto& task : dataHandler.getTasks())
+    {
+        if (task.second.m_objectId == objectId && task.second.m_taskType == DataHandler::TaskType::Reclamation)
+        {
+            statusText = DataHandler::taskStatusToString(task.second.m_taskStatus);
+            reclamationPicPreview->setPixmap(task.second.m_pixmap);
+            reclamationDescEdit->setText(QString::fromStdString(task.second.m_description));
+            break;
+        }
+    }
+    QLabel* reclamationStatusLabel = new QLabel(statusText, reclamationTab);
+
+    reclamationLayout->addWidget(reclamationDescLabel);
+    reclamationLayout->addWidget(reclamationDescEdit);
+    reclamationLayout->addWidget(reclamationPicLabel);
+    reclamationLayout->addWidget(reclamationPicPreview);
+    reclamationLayout->addWidget(uploadImageButton);
+    reclamationLayout->addWidget(sendButton);
+    reclamationLayout->addWidget(reclamationStatusLabel);
+
+    QObject::connect(uploadImageButton, &QPushButton::clicked, this, [=]() {
+        QString imagePath = QFileDialog::getOpenFileName(parent, "Select an Image", "", "Images (*.png *.xpm *.jpg *.jpeg)");
+        if (!imagePath.isEmpty()) {
+            QPixmap uploadedImage(imagePath);
+            if (!uploadedImage.isNull()) {
+                reclamationPicPreview->setPixmap(uploadedImage.scaled(reclamationPicPreview->size(), Qt::KeepAspectRatio, Qt::SmoothTransformation));
+                reclamationPicPreview->setText("");
+            }
+            else {
+                QMessageBox::warning(parent, "Error", "The selected file could not be loaded as an image.");
+            }
+        }
+        });
+    
+    QObject::connect(sendButton, &QPushButton::clicked, this, [=]()
+        {
+
+            QMessageBox::information(parent, "Information", "Reclamation sent.");
+            reclamationStatusLabel->setVisible(true);
+            DataHandler& dataHandler = DataHandler::getInstance();
+            DataHandler::Parcel& parcel = dataHandler.getParcel(objectId);
+            dataHandler.writteTask(objectId, "none", "Customer", "", DataHandler::TaskType::Reclamation, reclamationPicPreview->pixmap(), reclamationDescEdit->toPlainText().toStdString());
+        });
+
+    return reclamationTab;
+}
+
+//---------------------------------------------------------------------------
+// USE CASE 9 : Reklamuj balík
+QWidget* FormularHandler::createRecValidationForm(int32_t objectId, QWidget* parent)
+{
+    // Create dialog and layout
+    QDialog* reclamationDialog = new QDialog(parent); // Set MainWindow as parent
+    QVBoxLayout* mainLayout = new QVBoxLayout(reclamationDialog);
+    reclamationDialog->setWindowTitle("Order Dialog");
+
+    DataHandler& dataHandler = DataHandler::getInstance();
+    DataHandler::Task& task = dataHandler.getTask(objectId);
+
+    QWidget* reclamationTab = new QWidget();
+    QVBoxLayout* reclamationLayout = new QVBoxLayout(reclamationTab);
+
+    QLabel* reclamationDescLabel = new QLabel("Reclamation Description:", reclamationTab);
+    QTextEdit* reclamationDescEdit = new QTextEdit(reclamationTab);
+    reclamationDescEdit->setPlaceholderText(QString::fromStdString(task.m_description));
+
+    QLabel* reclamationPicLabel = new QLabel("Reclamation Picture:", reclamationTab);
+    QLabel* reclamationPicPreview = new QLabel("No picture available.", reclamationTab);
+    reclamationPicPreview->setPixmap(task.m_pixmap.scaled(reclamationPicPreview->size(), Qt::KeepAspectRatio, Qt::SmoothTransformation));
+
+    reclamationPicPreview->setAlignment(Qt::AlignCenter);
+    reclamationPicPreview->setStyleSheet("border: 1px solid gray;");
+    reclamationPicPreview->setFixedSize(200, 200);
+
+    QString statusText{ "Reclamation Status: Pending" };
+    QLabel* reclamationStatusLabel = new QLabel(statusText, reclamationTab);
+    for (const auto& task : dataHandler.getTasks())
+    {
+        if (task.second.m_objectId == objectId && task.second.m_taskType == DataHandler::TaskType::Reclamation)
+        {
+            statusText = DataHandler::taskStatusToString(task.second.m_taskStatus);
+            break;
+        }
+    }
+    reclamationStatusLabel->setText(statusText);
+
+    QPushButton* acceptButton = new QPushButton("Accept", reclamationTab);
+    QPushButton* denyButton = new QPushButton("Deny", reclamationTab);
+
+    reclamationLayout->addWidget(reclamationDescLabel);
+    reclamationLayout->addWidget(reclamationDescEdit);
+    reclamationLayout->addWidget(reclamationPicLabel);
+    reclamationLayout->addWidget(reclamationPicPreview);
+    reclamationLayout->addWidget(reclamationStatusLabel);
+    reclamationLayout->addWidget(acceptButton);
+    reclamationLayout->addWidget(denyButton);
+
+    QObject::connect(acceptButton, &QPushButton::clicked, this, [=, &task]()
+        {
+            task.m_taskStatus = DataHandler::TaskStatus::AcceptedReclamation;
+            QMessageBox::information(parent, "Information", "Request accepted.");
+            reclamationStatusLabel->setText(DataHandler::taskStatusToString(task.m_taskStatus));
+        });
+    
+    QObject::connect(denyButton, &QPushButton::clicked, this, [=, &task]()
+        {
+            task.m_taskStatus = DataHandler::TaskStatus::DeniedReclamation;
+            QMessageBox::information(parent, "Information", "Request denied.");
+            reclamationStatusLabel->setText(DataHandler::taskStatusToString(task.m_taskStatus));
+        });
+
+   
+    // Add tab widget to the main layout
+    mainLayout->addWidget(reclamationTab);
+
+    // Execute dialog
+    reclamationDialog->exec();
+
+    return reclamationTab;
+}
+
+//---------------------------------------------------------------------------

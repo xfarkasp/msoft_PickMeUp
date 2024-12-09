@@ -12,6 +12,8 @@
 #include "ConnectionHandler.h"
 #include <QTableWidgetItem>
 #include <QHeaderView>
+#include <QTextEdit>
+#include <QFileDialog>
 
 
 MainWindow::MainWindow(QWidget* parent)
@@ -25,8 +27,11 @@ MainWindow::MainWindow(QWidget* parent)
 
     setCentralWidget(stackedWidget);
 }
+//---------------------------------------------------------------------------
 
 MainWindow::~MainWindow() {}
+
+//---------------------------------------------------------------------------
 
 int32_t MainWindow::findWidget(std::string widgetName, QWidget* parent)
 {
@@ -41,6 +46,8 @@ int32_t MainWindow::findWidget(std::string widgetName, QWidget* parent)
         }
     }
 }
+
+//---------------------------------------------------------------------------
 
 // Creation of the login page with widgets
 QWidget* MainWindow::createLoginPage()
@@ -73,9 +80,10 @@ QWidget* MainWindow::createLoginPage()
             handleLogin(username.toStdString(), password.toStdString());
         });
     connect(toRegisterButton, &QPushButton::clicked, this, &MainWindow::switchToRegistrationPage);
-
     return loginPage;
 }
+
+//---------------------------------------------------------------------------
 
 // Create the registration page
 QWidget* MainWindow::createRegistrationPage() {
@@ -111,6 +119,8 @@ QWidget* MainWindow::createRegistrationPage() {
     return registrationPage;
 }
 
+//---------------------------------------------------------------------------
+
 // Create the menu page
 QWidget* MainWindow::createMenuPage(const DataHandler::User& user)
 {
@@ -139,12 +149,21 @@ QWidget* MainWindow::createMenuPage(const DataHandler::User& user)
 
         connect(sendParcelButton, &QPushButton::clicked, this, [this]
             {
+                // USE CASE 1: Odošli balík
                 // Create a form for sendign a package
                 FormularHandler formUi;
-                QWidget* receiveParcelPage = formUi.getForm(FormType::SendParcel, this);
-                receiveParcelPage->setObjectName("ReceiveParcelPage");
-                stackedWidget->addWidget(receiveParcelPage);
-                stackedWidget->setCurrentWidget(receiveParcelPage);
+                QWidget* sendParcelPage = formUi.getForm(-1, FormType::SendParcel, this);
+                sendParcelPage->setObjectName("SendParcelPage");
+                stackedWidget->addWidget(sendParcelPage);
+                stackedWidget->setCurrentWidget(sendParcelPage);
+            });
+
+        connect(orderHistoryButton, &QPushButton::clicked, this, [this]
+            {
+                QWidget* orederPage = createOrderHistory();
+                orederPage->setObjectName("ReceiveParcelPage");
+                stackedWidget->addWidget(orederPage);
+                stackedWidget->setCurrentWidget(orederPage);
             });
 
         connect(logOutButton, &QPushButton::clicked, this, [this]
@@ -219,6 +238,8 @@ QWidget* MainWindow::createMenuPage(const DataHandler::User& user)
     return menuWidget;
 }
 
+//---------------------------------------------------------------------------
+
 // Create task list from the task database in DataHandler
 QWidget* MainWindow::createTaskList()
 {
@@ -230,7 +251,7 @@ QWidget* MainWindow::createTaskList()
 
     // Create the table widget
     QTableWidget* taskTable = new QTableWidget();
-    taskTable->setColumnCount(6); // Columns for Assignee, Creator, Location, Type, Status, and Action Button
+    taskTable->setColumnCount(6);
     taskTable->setHorizontalHeaderLabels({ "Assignee", "Creator", "Location", "Type", "State", "Action" });
 
     // Populate the table with tasks
@@ -256,48 +277,47 @@ QWidget* MainWindow::createTaskList()
         taskTable->setItem(row, 3, typeItem);
         taskTable->setItem(row, 4, statusItem);
 
-        // Create an action button and add it to the table
         QPushButton* actionButton = new QPushButton("Execute");
         taskTable->setCellWidget(row, 5, actionButton);
 
-        // Connect the button to perform the desired action
         QObject::connect(actionButton, &QPushButton::clicked, this, [=]() {
 
-            ConnectionHandler connection;
-
-            QWidget* connectionPage = connection.connectionGui(task.m_id, ConnectionHandler::ConnectionType::Delivery, this);
-            connectionPage->setObjectName("ReceiveParcelPage");
-            stackedWidget->addWidget(connectionPage);
-            stackedWidget->setCurrentWidget(connectionPage);
+            if (task.m_taskType == DataHandler::TaskType::Delivery)
+            {
+                ConnectionHandler connection;
+                QWidget* connectionPage = connection.connectionGui(task.m_id, ConnectionHandler::ConnectionType::Delivery, this);
+                connectionPage->setObjectName("ReceiveParcelPage");
+                stackedWidget->addWidget(connectionPage);
+                stackedWidget->setCurrentWidget(connectionPage);
+            }
+            else if (task.m_taskType == DataHandler::TaskType::Reclamation)
+            {
+                FormularHandler formUi;
+                QWidget* receiveParcelPage = formUi.getForm(task.m_id, FormType::ReclamationValidation, this);
+            }
             });
 
         ++row;
     }
 
-    // Adjust the table settings
-    taskTable->setEditTriggers(QAbstractItemView::NoEditTriggers); // Disable editing
-    taskTable->setSelectionMode(QAbstractItemView::NoSelection);   // Disable selection
-    taskTable->horizontalHeader()->setStretchLastSection(true);   // Stretch the last column
+    taskTable->setEditTriggers(QAbstractItemView::NoEditTriggers);
+    taskTable->setSelectionMode(QAbstractItemView::NoSelection);
+    taskTable->horizontalHeader()->setStretchLastSection(true);
     taskTable->resizeColumnsToContents();
 
-    // Add the table to the layout
     mainLayout->addWidget(taskTable);
-
-    // Create a scroll area for the table
-    QScrollArea* scrollArea = new QScrollArea();
-    scrollArea->setWidget(containerWidget);
-    scrollArea->setWidgetResizable(true);
 
     QPushButton* filterButton = new QPushButton("Filter");
     QPushButton* backButton = new QPushButton("Back");
     
     mainLayout->addWidget(filterButton);
     mainLayout->addWidget(backButton);
+    // USE CASE 3: Vyfiltruj tasky
     connect(filterButton, &QPushButton::clicked, this, [=]() {
         for (int i = 0; i < taskTable->rowCount(); ++i)
         {
-            QTableWidgetItem* statusItem = taskTable->item(i, 4); // Get the Status column
-            if (statusItem && statusItem->text() == DataHandler::taskStatusToString(DataHandler::TaskStatus::Completed))
+            QTableWidgetItem* statusItem = taskTable->item(i, 4);
+            if (statusItem && statusItem->text() != DataHandler::taskStatusToString(DataHandler::TaskStatus::Created))
             {
                 taskTable->setRowHidden(i, true);
             }
@@ -309,8 +329,10 @@ QWidget* MainWindow::createTaskList()
             stackedWidget->setCurrentIndex(findWidget("FreelanceCourierMenu", this));
         });
 
-    return scrollArea;
+    return containerWidget;
 }
+
+//---------------------------------------------------------------------------
 
 // Create report list widget from reports in the TaskData
 QWidget* MainWindow::createReportList()
@@ -343,7 +365,7 @@ QWidget* MainWindow::createReportList()
         layout->addWidget(actionButton);
         QObject::connect(actionButton, &QPushButton::clicked, this, [=]() {
             FormularHandler formUi;
-            QWidget* receiveParcelPage = formUi.getForm(FormType::RequestRepair, this);
+            QWidget* receiveParcelPage = formUi.getForm(-1, FormType::RequestRepair, this);
             receiveParcelPage->setObjectName("ReceiveParcelPage");
             stackedWidget->addWidget(receiveParcelPage);
             stackedWidget->setCurrentWidget(receiveParcelPage);
@@ -359,17 +381,136 @@ QWidget* MainWindow::createReportList()
     return scrollArea;
 }
 
+//---------------------------------------------------------------------------
+
+// Create task list from the task database in DataHandler
+QWidget* MainWindow::createOrderHistory()
+{
+    DataHandler& dataHandler = DataHandler::getInstance();
+    QWidget* containerWidget = new QWidget();
+    QVBoxLayout* mainLayout = new QVBoxLayout(containerWidget);
+
+    QTableWidget* taskTable = new QTableWidget();
+    taskTable->setColumnCount(3); // Columns for Assignee, Creator, Location, Type, Status, and Action Button
+    taskTable->setHorizontalHeaderLabels({ "Id", "State", "Action" });
+
+    // Populate the table with tasks
+    const auto& parcels = dataHandler.getParcels();
+    taskTable->setRowCount(static_cast<int>(parcels.size()));
+
+    int row = 0;
+    for (const auto& parcelPair : parcels)
+    {
+        const auto& parcel = parcelPair.second;
+        
+        // Create table items for task properties
+        QTableWidgetItem* id = new QTableWidgetItem(QString::number(parcel.m_parcelId));
+        QTableWidgetItem* state = new QTableWidgetItem(DataHandler::parcelStatusToString(parcel.m_status));
+
+        // Add items to the table
+        taskTable->setItem(row, 0, id);
+        taskTable->setItem(row, 1, state);
+
+        // Create an action button and add it to the table
+        QPushButton* actionButton = new QPushButton("Open");
+        taskTable->setCellWidget(row, 2, actionButton);
+
+        // Connect the button to perform the desired action
+        QObject::connect(actionButton, &QPushButton::clicked, this, [=]()
+            {
+                createOrderWindow(parcel);
+            });
+
+        ++row;
+    }
+
+    taskTable->setEditTriggers(QAbstractItemView::NoEditTriggers);
+    taskTable->setSelectionMode(QAbstractItemView::NoSelection);
+    taskTable->horizontalHeader()->setStretchLastSection(true); 
+    taskTable->resizeColumnsToContents();
+
+    mainLayout->addWidget(taskTable);
+
+    QScrollArea* scrollArea = new QScrollArea();
+    scrollArea->setWidget(containerWidget);
+    scrollArea->setWidgetResizable(true);
+
+    QPushButton* backButton = new QPushButton("Back");
+
+    mainLayout->addWidget(backButton);
+
+    connect(backButton, &QPushButton::clicked, this, [this]
+        {
+            stackedWidget->setCurrentIndex(findWidget("BasicMenu", this));
+        });
+
+    return scrollArea;
+}
+
+//---------------------------------------------------------------------------
+
+void MainWindow::createOrderWindow(DataHandler::Parcel parcel)
+{
+    // Create dialog and layout
+    QDialog* orderDialog = new QDialog(this); // Set MainWindow as parent
+    QVBoxLayout* mainLayout = new QVBoxLayout(orderDialog);
+    orderDialog->setWindowTitle("Order Dialog");
+
+    // Create a QTabWidget for vertical tabs
+    QTabWidget* tabWidget = new QTabWidget(orderDialog);
+    tabWidget->setTabPosition(QTabWidget::West); // Vertical tabs on the left
+
+    // Order Details Tab
+    QWidget* orderDetailsTab = new QWidget();
+    QVBoxLayout* orderDetailsLayout = new QVBoxLayout(orderDetailsTab);
+
+    // Order Details Content
+    QLabel* orderIdLabel = new QLabel("Order ID: " + QString::number(parcel.m_parcelId), orderDetailsTab);
+    QLabel* senderLabel = new QLabel("Sender: " + QString::fromStdString(parcel.m_sender), orderDetailsTab);
+    QLabel* receiverLabel = new QLabel("Receiver: " + QString::fromStdString(parcel.m_reciever), orderDetailsTab);
+    QLabel* sourceLabel = new QLabel("Source address: " + QString::fromStdString(parcel.m_sourceAddress), orderDetailsTab);
+    QLabel* destinationLabel = new QLabel("Destination address: " + QString::fromStdString(parcel.m_destinationAddress), orderDetailsTab);
+    QLabel* statusLabel = new QLabel("Status: " + DataHandler::parcelStatusToString(parcel.m_status), orderDetailsTab);
+
+    orderDetailsLayout->addWidget(orderIdLabel);
+    orderDetailsLayout->addWidget(senderLabel);
+    orderDetailsLayout->addWidget(receiverLabel);
+    orderDetailsLayout->addWidget(sourceLabel);
+    orderDetailsLayout->addWidget(destinationLabel);
+    orderDetailsLayout->addWidget(statusLabel);
+
+    tabWidget->addTab(orderDetailsTab, "Order Details");
+
+    // Reclamation Tab
+    FormularHandler formUi;
+    QWidget* reclamationTab = formUi.getForm(parcel.m_parcelId, FormType::Reclamation, this);
+
+    tabWidget->addTab(reclamationTab, "Reclamation");
+    // Add tab widget to the main layout
+    mainLayout->addWidget(tabWidget);
+
+    // Execute dialog
+    orderDialog->exec();
+}
+
+
+//---------------------------------------------------------------------------
+
 // Switch gui to login page
 void MainWindow::switchToLoginPage()
 {
     stackedWidget->setCurrentIndex(0);
 }
 
+//---------------------------------------------------------------------------
+
 // Switch gui to registratin page
 void MainWindow::switchToRegistrationPage()
 {
     stackedWidget->setCurrentIndex(1);
 }
+
+//---------------------------------------------------------------------------
 
 // Find the user in the database and check if the inserted password is correct
 // if yes switch to login page, else show error messsage
@@ -388,7 +529,11 @@ void MainWindow::handleLogin(std::string mail, std::string password) {
     }
 }
 
+//---------------------------------------------------------------------------
+
 // Fake registration proccess(this is not implemented)
 void MainWindow::handleRegistration() {
     QMessageBox::information(this, "Register", "Registration functionality not implemented yet!");
 }
+
+//---------------------------------------------------------------------------

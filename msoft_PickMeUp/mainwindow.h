@@ -23,6 +23,8 @@ private:
     QWidget* createMenuPage(const DataHandler::User& user);
     QWidget* createTaskList();
     QWidget* createReportList();
+    QWidget* createOrderHistory();
+    void createOrderWindow(DataHandler::Parcel parcel);
 
 private slots:
     void switchToLoginPage();

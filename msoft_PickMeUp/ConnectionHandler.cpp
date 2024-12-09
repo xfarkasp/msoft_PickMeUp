@@ -1,8 +1,9 @@
-#include "AutomatController.h"
+﻿#include "AutomatController.h"
 #include "ConnectionHandler.h"
 #include "DataHandler.h"
 #include <QStackedWidget>
 #include <QPixmap>
+#include <QTimer>
 #include "Navigation.h"
 
 // Find a GuI page index to switch to (useful when you don't know the page indxes anymore)
@@ -20,12 +21,16 @@ int32_t ConnectionHandler::findWidget(std::string widgetName, QWidget* parent)
     }
 }
 
+//---------------------------------------------------------------------------
+
+// USE CASE 1: Odošli balík a USE CASE 2: Doruč nový balík
 // Cereate the connection gui
 QWidget* ConnectionHandler::connectionGui(int32_t id, ConnectionType conType, QWidget* parent) {
 
     QWidget* connectionPage = new QWidget(parent);
     QVBoxLayout* layout = new QVBoxLayout(connectionPage);
     QLabel* messageLabel = new QLabel("Click the button to connect to Automat", connectionPage);
+    messageLabel->setAlignment(Qt::AlignCenter);
     
     QPushButton* connectButton = new QPushButton("Connect", connectionPage);
     QPushButton* confirmButton = new QPushButton("Confirm", connectionPage);
@@ -36,54 +41,73 @@ QWidget* ConnectionHandler::connectionGui(int32_t id, ConnectionType conType, QW
 
     connect(simulateError, &QPushButton::clicked, [=]() 
         {
-            QString message = QString("Automat is full, plese proceed to the nearest automat.");
-            QMessageBox::information(nullptr, "Warrning", message);
-            messageLabel->setText("Please move to the nearest automat!\n");
+            QTimer* timer = new QTimer(parent);
+            timer->setSingleShot(true);
+            connect(timer, &QTimer::timeout, parent, []
+                {
+                    QMessageBox::information(nullptr, "Warrning", "Automat is full, plese proceed to the nearest automat.");
+                });
+            timer->start();
+            
             Navigation::navigate();
         });
 
     // Simulate connection to the automat
-    connect(connectButton, &QPushButton::clicked, [=]() mutable {
-        DataHandler& dh = DataHandler::getInstance();
-        DataHandler::Task* task = dh.getTask(id);
-        if (conType == ConnectionType::Delivery)
+    connect(connectButton, &QPushButton::clicked, [=]() 
         {
-            id = task->m_objectId;
-            Navigation::navigate();
+            int32_t localId = id;
+            DataHandler& dh = DataHandler::getInstance();
+            DataHandler::Task& task = dh.getTask(localId);
+            if (conType == ConnectionType::Delivery)
+            {
+                localId = task.m_objectId;
+                QTimer* timer = new QTimer(parent);
+                timer->setSingleShot(true);
+                connect(timer, &QTimer::timeout, parent, []
+                    {
+                        QMessageBox::information(nullptr, "Information", "Navigation system is navigating you to the package location.");
+                    });
+                timer->start();
+                Navigation::navigate();
 
-        }
-        DataHandler::Parcel parcel = dh.getParcel(id);
-        // If the locker is opened by a courier
-        if (parcel.m_status == DataHandler::ParcelStatus::Sent)
-        {
-            Navigation::navigate();
-            messageLabel->setText("Connected to Automat!\n Pick up parcel.");
-        }
-        else
-        {
-            // When inserting a new package
-            messageLabel->setText("Connected to Automat!\n Insert your package and click on confirm button.");
-        }
-        confirmButton->setVisible(true);
-        connectButton->setVisible(false);
+            }
+            DataHandler::Parcel parcel = dh.getParcel(localId);
+            // If the locker is opened by a courier
+            if (parcel.m_status == DataHandler::ParcelStatus::Sent)
+            {
+                messageLabel->setText("Connected to Automat!\n Pick up parcel.");
+            }
+            else
+            {
+                // When inserting a new package
+                messageLabel->setText("Connected to Automat!\n Insert your package and click on confirm button.");
+            }
+            confirmButton->setVisible(true);
+            connectButton->setVisible(false);
         });
 
     // Simulate Inserting a package
-    connect(confirmButton, &QPushButton::clicked, [=]() mutable {
+    connect(confirmButton, &QPushButton::clicked, [=]() {
         // Get the package info from the database
+        int32_t localId = id;
         DataHandler& dh = DataHandler::getInstance();
-        DataHandler::Task* task = dh.getTask(id);
+        DataHandler::Task& task = dh.getTask(localId);
         if (conType == ConnectionType::Delivery)
         {
-            id = task->m_objectId;
+            localId = task.m_objectId;
         }
-        DataHandler::Parcel& parcel = dh.getParcel(id);
+        DataHandler::Parcel& parcel = dh.getParcel(localId);
         // When courier is inserting a package
         if (parcel.m_status == DataHandler::ParcelStatus::Sent)
         {
-            QString message = QString("Navigation system is navigating you to your destination.");
+            QTimer* timer = new QTimer(parent);
+            timer->setSingleShot(true);
+            connect(timer, &QTimer::timeout, parent, []
+                {
+                    QMessageBox::information(nullptr, "Information", "Navigation system is navigating you to your destination.");
+                });
+            timer->start();
             Navigation::navigate();
-            QMessageBox::information(nullptr, "Task Details", message);
             messageLabel->setText("Connected to Automat!\n Insert delivered package.");
             parcel.setState(DataHandler::ParcelStatus::Arrived);
         }
@@ -103,45 +127,46 @@ QWidget* ConnectionHandler::connectionGui(int32_t id, ConnectionType conType, QW
         }
         
         });
-    connect(mainMenuButton, &QPushButton::clicked, [=]() mutable {
-        messageLabel->setText("Click the button to connect to Automat");
-        connectButton->setVisible(true);
-        confirmButton->setVisible(false);
-        mainMenuButton->setVisible(false);
-        // get package info from the database
-        DataHandler& dh = DataHandler::getInstance();
-        DataHandler::Task* task = dh.getTask(id);
-        if (conType == ConnectionType::Delivery)
+    connect(mainMenuButton, &QPushButton::clicked, [=]() 
         {
-            id = task->m_objectId;
-        }
-        DataHandler::Parcel& parcel = dh.getParcel(id);
+            int32_t localId = id;
+            messageLabel->setText("Click the button to connect to Automat");
+            connectButton->setVisible(true);
+            confirmButton->setVisible(false);
+            mainMenuButton->setVisible(false);
+            // get package info from the database
+            DataHandler& dh = DataHandler::getInstance();
+            DataHandler::Task& task = dh.getTask(localId);
+            if (conType == ConnectionType::Delivery)
+            {
+                localId = task.m_objectId;
+            }
+            DataHandler::Parcel& parcel = dh.getParcel(localId);
         
-        QStackedWidget* stackedWidget = parent->findChild<QStackedWidget*>();
-        if (!stackedWidget)
-        {
-            return;
-        }
-
-        // Record an newly inserted package to the system, to indicate waiting for delivery
-        if (parcel.m_status == DataHandler::ParcelStatus::Created)
-        {
-            auto automat = connectAutomat();
-            // Check if the package was succesfuly recorded to be delivered
-            if (!automat.recordPackage(id))
+            QStackedWidget* stackedWidget = parent->findChild<QStackedWidget*>();
+            if (!stackedWidget)
             {
                 return;
             }
-            // Return to main menu
-            stackedWidget->setCurrentIndex(findWidget("BasicMenu", parent));
-        }
-        else
-        {
-            // Return to main menu
-            task->m_taskStatus = DataHandler::TaskStatus::Completed;
-            stackedWidget->setCurrentIndex(findWidget("FreelanceCourierMenu", parent));
-        }
-        
+
+            // Record an newly inserted package to the system, to indicate waiting for delivery
+            if (parcel.m_status == DataHandler::ParcelStatus::Created)
+            {
+                auto automat = connectAutomat();
+                // Check if the package was succesfuly recorded to be delivered
+                if (!automat.recordPackage(localId))
+                {
+                    return;
+                }
+                // Return to main menu
+                stackedWidget->setCurrentIndex(findWidget("BasicMenu", parent));
+            }
+            else
+            {
+                // Return to main menu
+                task.m_taskStatus = DataHandler::TaskStatus::Completed;
+                stackedWidget->setCurrentIndex(findWidget("FreelanceCourierMenu", parent));
+            }
         });
 
     layout->addWidget(messageLabel);
@@ -151,3 +176,5 @@ QWidget* ConnectionHandler::connectionGui(int32_t id, ConnectionType conType, QW
 
     return connectionPage;
 }
+
+//---------------------------------------------------------------------------

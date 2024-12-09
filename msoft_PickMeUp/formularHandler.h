@@ -9,7 +9,9 @@
 
 enum class FormType {
     SendParcel,
-    RequestRepair
+    RequestRepair,
+    Reclamation,
+    ReclamationValidation
 };
 
 class FormularHandler : public QObject
@@ -17,9 +19,11 @@ class FormularHandler : public QObject
 public:
     FormularHandler(){}
 
-    QWidget* getForm(FormType type, QWidget* parent = nullptr);
+    QWidget* getForm(int32_t objectId, FormType type, QWidget* parent=nullptr);
 
 private:
     QWidget* createSendParcelForm(QWidget* parent);
     QWidget* createRepairTaskForm(QWidget* parent);
+    QWidget* createReclamationForm(int32_t objectId, QWidget* parent);
+    QWidget* createRecValidationForm(int32_t objectId, QWidget* parent);
 };

@@ -1,8 +1,9 @@
-#include <QMessageBox>
+﻿#include <QMessageBox>
 #include <QLabel>
 #include <qlayout.h>
 #include "Navigation.h"
 
+// USE CASE 1: Odošli balík a USE CASE 2: Doruč nový balík
 void Navigation::navigate()
 {
     QDialog* imageDialog = new QDialog();
@@ -21,3 +22,5 @@ void Navigation::navigate()
     imageDialog->resize(pixmap.size());
     imageDialog->exec();
 }
+
+//---------------------------------------------------------------------------
